@@ -14,6 +14,13 @@ class Scheduler {
 	public const HOOK_START = 'lvmu_start_scan';
 	public const HOOK_PHASE = 'lvmu_run_phase';
 	private const STALE_AFTER = 6 * HOUR_IN_SECONDS;
+	private const WATCHDOG_IDLE = 10 * MINUTE_IN_SECONDS;
+	private const WATCHDOG_MAX  = 3;
+	public const OPT_BATCH_FACTOR = 'lvmu_batch_factor';
+	public const OPT_WATCHDOG     = 'lvmu_watchdog_attempts';
+
+	/** @var bool Whether this request holds the phase lock. */
+	private static bool $locked = false;
 
 	public const PHASES = [
 		'scan_files'      => Indexer\FileScanner::class,
@@ -23,12 +30,28 @@ class Scheduler {
 		'finalize'        => Indexer\Finalizer::class,
 	];
 
+	/**
+	 * Multisite is not supported: uploads/sites/N is indexed but the other sites' tables
+	 * are not scanned, so all subsite files would show up as unused orphans.
+	 */
+	public static function is_supported(): bool {
+		return !is_multisite();
+	}
+
+	public static function unsupported_message(): string {
+		return 'Label Vier Media Usage does not support multisite installations.';
+	}
+
 	public static function register(): void {
+		if (!self::is_supported()) {
+			return;
+		}
 		add_action(self::HOOK_START, static function () {
 			self::start_scan();
 		});
 		add_action(self::HOOK_PHASE, [self::class, 'run_phase'], 10, 2);
 		add_action('init', [self::class, 'ensure_nightly'], 20);
+		add_action('init', [self::class, 'watchdog'], 30);
 	}
 
 	/**
@@ -37,6 +60,9 @@ class Scheduler {
 	 * equivalent of 03:00 in the site timezone.
 	 */
 	public static function ensure_nightly(): void {
+		if (!self::is_supported()) {
+			return;
+		}
 		if (!function_exists('as_schedule_cron_action') || !function_exists('as_has_scheduled_action') || !did_action('action_scheduler_init')) {
 			return;
 		}
@@ -60,7 +86,7 @@ class Scheduler {
 	 * Begin a new run and queue the first phase.
 	 */
 	public static function start_scan(bool $force = false): bool {
-		if (!self::begin($force)) {
+		if (!self::is_supported() || !self::begin($force)) {
 			return false;
 		}
 		self::cancel_pending_phases();
@@ -91,16 +117,36 @@ class Scheduler {
 		}
 
 		// Only one runner at a time (WP cron, async request and the admin poll can overlap).
-		// A runner that loses the lock just stops, the lock holder queues the continuation.
+		// A runner that loses the lock queues the same phase again, so the scan never stalls.
 		if (!self::lock()) {
+			self::requeue_later($phase, $scan_id);
 			return;
 		}
 
 		try {
+			// The state may have changed while waiting for the lock (restart, cancel).
+			$state = ScanState::get();
+			if ($scan_id !== (int) $state['scan_id'] || $state['status'] !== 'running') {
+				return;
+			}
 			self::run_phase_locked($phase, $scan_id, $state);
 		} finally {
-			delete_option(self::LOCK);
+			self::unlock();
 		}
+	}
+
+	/**
+	 * Schedule the same phase again in 30 seconds unless an identical action is pending.
+	 */
+	private static function requeue_later(string $phase, int $scan_id): void {
+		if (!function_exists('as_schedule_single_action')) {
+			return;
+		}
+		$args = [$phase, $scan_id];
+		if (function_exists('as_has_scheduled_action') && as_has_scheduled_action(self::HOOK_PHASE, $args, self::GROUP)) {
+			return;
+		}
+		as_schedule_single_action(time() + 30, self::HOOK_PHASE, $args, self::GROUP);
 	}
 
 	private static function run_phase_locked(string $phase, int $scan_id, array $state): void {
@@ -130,14 +176,103 @@ class Scheduler {
 		}
 	}
 
+	private static function lock_name(): string {
+		global $wpdb;
+		return substr('lvmu_phase_' . $wpdb->prefix, 0, 64);
+	}
+
+	/**
+	 * Atomic, connection scoped lock (released automatically when the process dies).
+	 * Falls back to an option based lock when GET_LOCK is unavailable.
+	 */
 	private static function lock(): bool {
+		global $wpdb;
+		$got = $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 0)', self::lock_name()));
+		if ($got !== null && $got !== '') {
+			self::$locked = ((int) $got === 1);
+			return self::$locked;
+		}
+
+		// Fallback: option lock with takeover after 10 minutes.
 		if (add_option(self::LOCK, time(), '', false)) {
+			self::$locked = true;
 			return true;
 		}
-		// Take over a lock left behind by a killed process.
-		if ((int) get_option(self::LOCK) < time() - 120) {
+		if ((int) get_option(self::LOCK) < time() - 10 * MINUTE_IN_SECONDS) {
 			update_option(self::LOCK, time(), false);
+			self::$locked = true;
 			return true;
+		}
+		return false;
+	}
+
+	private static function unlock(): void {
+		global $wpdb;
+		if (!self::$locked) {
+			return;
+		}
+		self::$locked = false;
+		$wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', self::lock_name()));
+		delete_option(self::LOCK);
+	}
+
+	/**
+	 * Batch size multiplier for phases that adapt their batch size (halves on every
+	 * watchdog retry, reset when a new scan starts).
+	 */
+	public static function batch_factor(): float {
+		$factor = (float) get_option(self::OPT_BATCH_FACTOR, 1.0);
+		return $factor > 0 && $factor <= 1 ? $factor : 1.0;
+	}
+
+	/**
+	 * Recover a scan whose phase died (fatal error, OOM, max_execution_time) and left no
+	 * action queued. Staleness is measured from the last progress update.
+	 */
+	public static function watchdog(): void {
+		if (!self::is_supported() || !function_exists('as_has_scheduled_action') || !class_exists('ActionScheduler') || !\ActionScheduler::is_initialized()) {
+			return;
+		}
+		$state = ScanState::get();
+		if ($state['status'] !== 'running') {
+			return;
+		}
+		if (get_transient('lvmu_watchdog_throttle')) {
+			return;
+		}
+		set_transient('lvmu_watchdog_throttle', 1, 5 * MINUTE_IN_SECONDS);
+
+		$last = (int) ($state['last_progress_at'] ?: $state['started_at']);
+		if (time() - $last <= self::WATCHDOG_IDLE) {
+			return;
+		}
+		if (self::has_phase_action()) {
+			return;
+		}
+
+		$phase    = (string) ($state['phase'] ?: self::first_phase());
+		$attempts = (int) get_option(self::OPT_WATCHDOG, 0) + 1;
+		if ($attempts > self::WATCHDOG_MAX) {
+			ScanState::update(['status' => 'failed', 'error' => "Phase {$phase} crashed repeatedly", 'finished_at' => time()]);
+			return;
+		}
+		update_option(self::OPT_WATCHDOG, $attempts, false);
+		update_option(self::OPT_BATCH_FACTOR, max(0.05, self::batch_factor() / 2), false);
+		ScanState::update(['last_progress_at' => time()]);
+		self::enqueue($phase, (int) $state['scan_id']);
+	}
+
+	private static function has_phase_action(): bool {
+		foreach ([\ActionScheduler_Store::STATUS_PENDING, \ActionScheduler_Store::STATUS_RUNNING] as $status) {
+			$ids = \ActionScheduler::store()->query_actions([
+				'hook'     => self::HOOK_PHASE,
+				'group'    => self::GROUP,
+				'status'   => $status,
+				'per_page' => 1,
+			]);
+			if ($ids) {
+				return true;
+			}
 		}
 		return false;
 	}
@@ -149,6 +284,10 @@ class Scheduler {
 	 * the container).
 	 */
 	public static function run_pending_inline(): void {
+		if (!self::is_supported()) {
+			return;
+		}
+		self::watchdog();
 		if (!function_exists('as_get_scheduled_actions') || !class_exists('ActionScheduler')) {
 			return;
 		}
@@ -173,6 +312,10 @@ class Scheduler {
 	public static function run_sync(?callable $log = null, bool $force = true): bool {
 		$log ??= static function (string $message): void {
 		};
+		if (!self::is_supported()) {
+			$log(self::unsupported_message());
+			return false;
+		}
 		if (!self::begin($force)) {
 			$log('A scan is already running.');
 			return false;
@@ -222,7 +365,10 @@ class Scheduler {
 			'finished_at' => null,
 			'progress'    => [],
 			'error'       => '',
+			'last_progress_at' => time(),
 		]);
+		update_option(self::OPT_BATCH_FACTOR, 1.0, false);
+		update_option(self::OPT_WATCHDOG, 0, false);
 		return true;
 	}
 
@@ -248,7 +394,8 @@ class Scheduler {
 			}
 			return;
 		}
-		ScanState::update(['phase' => $next]);
+		update_option(self::OPT_WATCHDOG, 0, false);
+		ScanState::update(['phase' => $next, 'last_progress_at' => time()]);
 		self::enqueue($next, $scan_id);
 	}
 

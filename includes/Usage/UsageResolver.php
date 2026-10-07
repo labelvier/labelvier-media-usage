@@ -142,8 +142,25 @@ class UsageResolver implements PhaseInterface {
 			return false;
 		}
 
-		$in     = implode(',', $aids);
-		$hashes = implode(',', array_map(static fn($id) => "'" . md5('id:' . $id) . "'", $aids));
+		$in = implode(',', $aids);
+
+		// Attachments sharing a file with another attachment (WPML/Polylang duplicates,
+		// duplicate imports) are not linked to that file; an id ref to such a duplicate
+		// counts for the attachment that owns the file.
+		$dups = get_option(\LabelvierMediaUsage\Indexer\AttachmentMapper::DUP_OPTION, []);
+		$dups = is_array($dups) ? array_filter($dups, static fn($owner) => in_array((int) $owner, $aids, true)) : [];
+		$hash_ids = $aids;
+		$map_cases = '';
+		if ($dups) {
+			$hash_ids = array_merge($aids, array_map('intval', array_keys($dups)));
+			$cases    = [];
+			foreach ($dups as $dup => $owner) {
+				$cases[] = 'WHEN ' . (int) $dup . ' THEN ' . (int) $owner;
+			}
+			$map_cases = 'CASE CAST(r.ref_value AS UNSIGNED) ' . implode(' ', $cases) . ' ELSE CAST(r.ref_value AS UNSIGNED) END';
+		}
+		$id_key = $map_cases ?: 'CAST(r.ref_value AS UNSIGNED)';
+		$hashes = implode(',', array_map(static fn($id) => "'" . md5('id:' . $id) . "'", $hash_ids));
 		$rs     = (int) $scan_id;
 		$src    = self::src_sql();
 		$self   = "NOT (r.source_type IN ('post','postmeta') AND r.source_id = CAST(f.attachment_id AS CHAR))";
@@ -159,7 +176,7 @@ class UsageResolver implements PhaseInterface {
 				INNER JOIN {$refs} r ON r.ref_hash = MD5(CONCAT('name:', LOWER(f.filename))) AND r.ref_type = 'name' AND r.scan_id = {$rs}
 				WHERE {$range} AND {$self}
 				UNION ALL
-				SELECT CAST(r.ref_value AS UNSIGNED) AS k, {$src} AS src FROM {$refs} r
+				SELECT {$id_key} AS k, {$src} AS src FROM {$refs} r
 				WHERE r.ref_hash IN ({$hashes}) AND r.ref_type = 'id' AND r.scan_id = {$rs}
 				AND NOT (r.source_type IN ('post','postmeta') AND r.source_id = r.ref_value)
 			) x GROUP BY x.k"

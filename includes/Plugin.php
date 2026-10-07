@@ -17,17 +17,35 @@ class Plugin {
 
 	public function boot(): void {
 		Schema::maybe_install();
-		if (class_exists(Scheduler::class)) {
-			Scheduler::register();
-		}
+		if (is_multisite()) {
+			add_action('admin_notices', [self::class, 'multisite_notice']);
+			add_action('network_admin_notices', [self::class, 'multisite_notice']);
+		} else {
+			if (class_exists(Scheduler::class)) {
+				Scheduler::register();
+			}
 
-		if (is_admin() && class_exists(Page::class)) {
-			Page::register();
+			if (is_admin() && class_exists(Page::class)) {
+				Page::register();
+			}
 		}
 
 		if (defined('WP_CLI') && WP_CLI && class_exists(Cli::class)) {
 			\WP_CLI::add_command('lvmu', Cli::class);
 		}
+	}
+
+	public static function multisite_notice(): void {
+		$screen = function_exists('get_current_screen') ? get_current_screen() : null;
+		if ($screen && !in_array($screen->id, ['plugins', 'plugins-network'], true)) {
+			return;
+		}
+		if (!current_user_can('activate_plugins')) {
+			return;
+		}
+		echo '<div class="notice notice-error"><p>'
+			. esc_html__('Label Vier Media Usage does not support multisite installations and is disabled, because files of other sites would be reported as unused.', 'labelvier-media-usage')
+			. '</p></div>';
 	}
 
 	public static function activate(): void {

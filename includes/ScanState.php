@@ -14,6 +14,7 @@ namespace LabelvierMediaUsage;
  *   'finished_at' => int|null unix,
  *   'progress'    => array<string, int|string>, phase specific counters,
  *   'error'       => string,
+ *   'last_progress_at' => int, unix time of the last progress() call (watchdog),
  * ]
  */
 class ScanState {
@@ -30,6 +31,7 @@ class ScanState {
 			'finished_at' => null,
 			'progress'    => [],
 			'error'       => '',
+			'last_progress_at' => 0,
 		]);
 	}
 
@@ -44,7 +46,10 @@ class ScanState {
 	 */
 	public static function progress(array $counters): void {
 		$state = self::get();
-		self::update(['progress' => array_merge($state['progress'], $counters)]);
+		self::update([
+			'progress'         => array_merge($state['progress'], $counters),
+			'last_progress_at' => time(),
+		]);
 	}
 
 	public static function is_running(): bool {

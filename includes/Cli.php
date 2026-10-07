@@ -26,6 +26,9 @@ class Cli {
 	 * @param array $assoc_args
 	 */
 	public function index($args, $assoc_args): void {
+		if (!Scheduler::is_supported()) {
+			\WP_CLI::error(Scheduler::unsupported_message());
+		}
 		$force = !empty($assoc_args['force']);
 
 		if (!empty($assoc_args['sync'])) {
