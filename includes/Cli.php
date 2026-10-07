@@ -74,7 +74,7 @@ class Cli {
 	}
 
 	/**
-	 * Show totals by role, type and usage.
+	 * Show totals per category (as in the admin overview) and by type. Values are count / size.
 	 *
 	 * ## OPTIONS
 	 *
@@ -91,22 +91,38 @@ class Cli {
 	 * @param array $assoc_args
 	 */
 	public function summary($args, $assoc_args): void {
-		$summary = (new FileRepository())->summary();
-		$format  = $assoc_args['format'] ?? 'table';
+		$repo       = new FileRepository();
+		$summary    = $repo->summary();
+		$categories = $repo->category_summary();
+		$potential  = $repo->cleanup_potential();
+		$format     = $assoc_args['format'] ?? 'table';
 
 		if ($format === 'json') {
+			$summary['categories']  = $categories;
+			$summary['reclaimable'] = $potential;
 			\WP_CLI::line(wp_json_encode($summary, JSON_PRETTY_PRINT));
 			return;
 		}
 
-		$rows = [['group' => 'total', 'key' => 'all', 'count' => $summary['total']['count'], 'size' => size_format($summary['total']['size'], 2)]];
-		foreach (['by_role', 'by_type', 'by_usage'] as $group) {
+		$fmt  = static fn(array $d): string => $d['count'] . ' / ' . size_format($d['size'], 2);
+		$rows = [['group' => 'total', 'key' => 'all', 'total' => $fmt($summary['total']), 'used' => '', 'unused' => '']];
+		foreach ($categories as $category => $data) {
+			$is_protected = $category === 'protected';
+			$rows[]       = [
+				'group'  => 'category',
+				'key'    => $category,
+				'total'  => $fmt($data['total']),
+				'used'   => $is_protected ? 'n/a' : $fmt($data['used']),
+				'unused' => $is_protected ? 'n/a' : $fmt($data['unused']),
+			];
+		}
+		$rows[] = ['group' => 'reclaimable', 'key' => 'unused, excl. protected', 'total' => '', 'used' => '', 'unused' => $fmt($potential)];
+		foreach (['by_type'] as $group) {
 			foreach ($summary[$group] as $key => $data) {
-				$rows[] = ['group' => substr($group, 3), 'key' => $key, 'count' => $data['count'], 'size' => size_format($data['size'], 2)];
+				$rows[] = ['group' => substr($group, 3), 'key' => $key, 'total' => $fmt($data), 'used' => '', 'unused' => ''];
 			}
 		}
-		$rows[] = ['group' => 'reclaimable', 'key' => 'orphaned+unused', 'count' => $summary['orphaned_unused']['count'], 'size' => size_format($summary['orphaned_unused']['size'], 2)];
-		\WP_CLI\Utils\format_items('table', $rows, ['group', 'key', 'count', 'size']);
+		\WP_CLI\Utils\format_items('table', $rows, ['group', 'key', 'total', 'used', 'unused']);
 	}
 
 	/**

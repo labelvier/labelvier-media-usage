@@ -354,8 +354,7 @@ class FileRepository {
 	 *   total: array{count: int, size: int},
 	 *   by_role: array<string, array{count: int, size: int}>,
 	 *   by_type: array<string, array{count: int, size: int}>,
-	 *   by_usage: array<string, array{count: int, size: int}>,
-	 *   orphaned_unused: array{count: int, size: int}
+	 *   by_usage: array<string, array{count: int, size: int}>
 	 * }
 	 */
 	public function summary(): array {
@@ -371,14 +370,12 @@ class FileRepository {
 		};
 
 		$total    = $wpdb->get_row("SELECT COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table}");
-		$orphaned = $wpdb->get_row("SELECT COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table} WHERE attachment_id IS NULL AND usage_status = 'unused'");
 
 		return [
-			'total'           => ['count' => (int) $total->c, 'size' => (int) $total->s],
-			'by_role'         => $group('file_role'),
-			'by_type'         => $group('file_type'),
-			'by_usage'        => $group('usage_status'),
-			'orphaned_unused' => ['count' => (int) $orphaned->c, 'size' => (int) $orphaned->s],
+			'total'    => ['count' => (int) $total->c, 'size' => (int) $total->s],
+			'by_role'  => $group('file_role'),
+			'by_type'  => $group('file_type'),
+			'by_usage' => $group('usage_status'),
 		];
 	}
 }
