@@ -49,6 +49,13 @@ wp lvmu list --orphaned --usage_status=unused --limit=50
 
 ## Development
 
-Action Scheduler is bundled with composer in `vendor/` (committed). Test data:
+Action Scheduler is bundled with composer in `vendor/` (committed).
+
+Build: `npm run build` in the repository root copies a clean plugin to
+`build/labelvier-media-usage/` and creates `build/labelvier-media-usage-<version>.zip`
+(version from the plugin header), ready for Plugins → Add New → Upload. The theme build
+moved to `npm run build:theme` (used by the deploy scripts).
+
+Test data:
 `bin/seed-media-usage.sh` in the repository root, expected results in
 `test/fixtures/EXPECTED.md`.
