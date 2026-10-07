@@ -5,6 +5,9 @@
 .lvmu-status__info { flex: 1 1 320px; min-width: 0; }
 .lvmu-status p { margin: 0 0 6px; }
 .lvmu-status__last .dashicons { color: #646970; }
+.lvmu-status__last .lvmu-spin { animation: lvmu-spin 1.2s linear infinite; color: #2271b1; }
+@keyframes lvmu-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .lvmu-status__last .lvmu-spin { animation: none; } }
 .lvmu-progress[hidden] { display: none; }
 .lvmu-bar { height: 10px; background: #dcdcde; border-radius: 5px; overflow: hidden; margin: 6px 0 10px; }
 .lvmu-bar span { display: block; height: 100%; background: #2271b1; transition: width .4s; }

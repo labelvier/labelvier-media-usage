@@ -16,6 +16,14 @@
 
 	/* ---------- progress polling ---------- */
 	var box = document.getElementById('lvmu-progress');
+	var maxSeen = { scan: 0, percent: 0 };
+	function setText(id, t) { var el = document.getElementById(id); if (el) { el.textContent = t || ''; } }
+	function showStatus(d) {
+		var icon = document.getElementById('lvmu-status-icon');
+		if (icon) { icon.classList.toggle('lvmu-spin', d.status === 'running'); }
+		setText('lvmu-status-line', d.line);
+		setText('lvmu-status-date', d.line_date);
+	}
 	function poll() {
 		var body = new URLSearchParams({ action: 'lvmu_status', nonce: cfg.nonce });
 		fetch(cfg.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: body })
@@ -25,12 +33,19 @@
 				var d = res.data;
 				if (d.status === 'running') {
 					var bar = box.querySelector('.lvmu-bar');
-					document.getElementById('lvmu-progress-text').textContent = d.text;
-					bar.setAttribute('aria-valuenow', d.percent);
-					bar.firstElementChild.style.width = d.percent + '%';
+					// Never let the bar go backwards within one run.
+					if (maxSeen.scan !== d.scan_id) { maxSeen = { scan: d.scan_id, percent: 0 }; }
+					maxSeen.percent = Math.max(maxSeen.percent, d.percent);
+					var pct = maxSeen.percent;
+					showStatus(d);
+					box.hidden = false;
+					setText('lvmu-progress-text', pct === d.percent ? d.text : d.text.replace(/\(\d+%\)$/, '(' + pct + '%)'));
+					bar.setAttribute('aria-valuenow', pct);
+					bar.firstElementChild.style.width = pct + '%';
 					setTimeout(poll, cfg.interval || 3000);
 				} else {
-					document.getElementById('lvmu-progress-text').textContent = i18n.done || '';
+					showStatus(d);
+					setText('lvmu-progress-text', i18n.done || '');
 					window.location.href = window.location.pathname + '?page=lvmu';
 				}
 			})

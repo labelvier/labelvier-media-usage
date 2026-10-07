@@ -212,46 +212,119 @@ class Page {
 		wp_send_json_success(self::status_payload($state));
 	}
 
-	public static function status_payload(array $state): array {
-		$phases = self::phases();
-		$keys   = array_keys($phases);
-		$idx    = array_search($state['phase'], $keys, true);
-		$percent = 0;
-		$detail  = [];
-
-		foreach ((array) $state['progress'] as $k => $v) {
-			if (is_scalar($v) && $k !== 'phase_started' && $v !== '') {
-				$detail[] = ucfirst(str_replace('_', ' ', (string) $k)) . ': ' . (is_numeric($v) ? number_format_i18n((float) $v) : $v);
-			}
+	/**
+	 * Timestamp of the last finished index (0 when never indexed).
+	 */
+	private static function last_indexed(array $state): int {
+		$summ = get_option('lvmu_summary');
+		$last = $state['finished_at'] ?: (is_array($summ) ? ($summ['generated_at'] ?? 0) : 0);
+		if (is_string($last) && !is_numeric($last)) {
+			$last = strtotime($last . ' UTC');
 		}
+		return (int) $last;
+	}
+
+	/**
+	 * Fraction (0..1) of the current phase and a short human detail line, from the counters
+	 * of that phase only. Never returns a fraction of 1 before the phase has finished.
+	 *
+	 * @return array{0: float, 1: string}
+	 */
+	private static function phase_progress(string $phase, array $p): array {
+		$n   = static fn($k) => isset($p[$k]) && is_numeric($p[$k]) ? max(0, (float) $p[$k]) : null;
+		$fmt = static fn($v) => number_format_i18n((float) $v);
+
+		switch ($phase) {
+			case 'scan_files':
+				$found = $n('files_found');
+				if ($found === null) {
+					return [0.0, ''];
+				}
+				// Unknown total: approach 1 asymptotically so the bar only moves forward.
+				$frac = $found / ($found + 2000);
+				/* translators: %s: number of files */
+				return [$frac, sprintf(__('Files found: %s', 'labelvier-media-usage'), $fmt($found))];
+
+			case 'map_attachments':
+				$done  = $n('attachments_mapped');
+				$total = $n('attachments_total');
+				if ($done === null || !$total) {
+					return [0.0, ''];
+				}
+				$done = min($done, $total);
+				/* translators: 1: done, 2: total */
+				return [$done / $total, sprintf(__('Linking Media Library items: %1$s of %2$s', 'labelvier-media-usage'), $fmt($done), $fmt($total))];
+
+			case 'scan_refs':
+				$done  = $n('refs_tables_done');
+				$total = $n('refs_tables_total');
+				if ($done === null || !$total) {
+					return [0.0, ''];
+				}
+				$done = min($done, $total);
+				/* translators: 1: done, 2: total */
+				return [$done / $total, sprintf(__('Scanning database tables: %1$s of %2$s', 'labelvier-media-usage'), $fmt($done), $fmt($total))];
+
+			case 'resolve_usage':
+				// resolve_done keeps counting across steps: 0..total for the "direct" step, then
+				// on top of that for the "attachments" step (so it exceeds resolve_total).
+				$done  = $n('resolve_done');
+				$total = $n('resolve_total');
+				$step  = (string) ($p['resolve_step'] ?? 'direct');
+				if ($done === null || !$total) {
+					return [0.0, ''];
+				}
+				if ($step === 'direct') {
+					$done = min($done, $total);
+					/* translators: 1: done, 2: total */
+					return [0.7 * $done / $total, sprintf(__('Checking files: %1$s of %2$s', 'labelvier-media-usage'), $fmt($done), $fmt($total))];
+				}
+				if ($step === 'attachments') {
+					$extra = min(1.0, max(0.0, $done - $total) / $total);
+					return [0.7 + 0.25 * $extra, __('Checking resized image versions', 'labelvier-media-usage')];
+				}
+				return [0.95, __('Checking resized image versions', 'labelvier-media-usage')];
+		}
+		return [0.0, ''];
+	}
+
+	public static function status_payload(array $state): array {
+		$phases  = self::phases();
+		$keys    = array_keys($phases);
+		$idx     = array_search($state['phase'], $keys, true);
+		$percent = 0;
+		$detail  = '';
 
 		if ($state['status'] === 'done') {
 			$percent = 100;
 		} elseif ($state['status'] === 'running' && $idx !== false) {
-			$p    = (array) $state['progress'];
-			$frac = 0.0;
-			// Done/total counter pairs written by each phase.
-			$pairs = [
-				'map_attachments' => ['attachments_mapped', 'attachments_total'],
-				'scan_refs'       => ['refs_tables_done', 'refs_tables_total'],
-				'resolve_usage'   => ['resolve_done', 'resolve_total'],
-			];
-			[$done_key, $total_key] = $pairs[$state['phase']] ?? ['done', 'total'];
-			if (isset($p[$done_key], $p[$total_key]) && is_numeric($p[$done_key]) && is_numeric($p[$total_key]) && $p[$total_key] > 0) {
-				$frac = min(1, $p[$done_key] / $p[$total_key]);
-			}
-			$percent = (int) floor((($idx + $frac) / count($keys)) * 100);
+			[$frac, $detail] = self::phase_progress((string) $state['phase'], (array) $state['progress']);
+			$percent = (int) floor((($idx + min(0.99, $frac)) / count($keys)) * 100);
 		}
+
+		$last    = self::last_indexed($state);
+		$running = $state['status'] === 'running';
+		$when    = $last ? (string) wp_date(get_option('date_format') . ' ' . get_option('time_format'), $last) : '';
+		if ($last) {
+			/* translators: %s: relative time */
+			$last_text = sprintf(__('Last indexed %s ago', 'labelvier-media-usage'), human_time_diff($last));
+		} else {
+			$last_text = $running ? __('Never indexed before', 'labelvier-media-usage') : __('Never indexed', 'labelvier-media-usage');
+		}
+		$line = $running ? __('Indexing…', 'labelvier-media-usage') . ' — ' . $last_text : $last_text;
 
 		$out = [
 			'status'      => $state['status'],
+			'scan_id'     => (int) $state['scan_id'],
 			'phase'       => $state['phase'],
 			'phase_label' => $phases[$state['phase']] ?? '',
 			'step'        => $idx === false ? 0 : $idx + 1,
 			'steps'       => count($keys),
 			'percent'     => $percent,
-			'detail'      => implode(' · ', $detail),
+			'detail'      => $detail,
 			'error'       => (string) $state['error'],
+			'line'        => $line,
+			'line_date'   => $when ? '(' . $when . ')' : '',
 		];
 		$out['text'] = self::progress_text($out);
 		return $out;
@@ -343,11 +416,7 @@ class Page {
 
 	private static function render_status(array $state, array $summary): void {
 		$running  = $state['status'] === 'running';
-		$summ_opt = get_option('lvmu_summary');
-		$last     = $state['finished_at'] ?: (is_array($summ_opt) ? ($summ_opt['generated_at'] ?? 0) : 0);
-		if (is_string($last) && !is_numeric($last)) {
-			$last = strtotime($last . ' UTC');
-		}
+		$last     = self::last_indexed($state);
 		$never = !$last && $summary['total']['count'] === 0;
 		$payload = self::status_payload($state);
 
@@ -360,14 +429,9 @@ class Page {
 
 		echo '<div class="lvmu-box lvmu-status">';
 		echo '<div class="lvmu-status__info">';
-		echo '<p class="lvmu-status__last"><span class="dashicons dashicons-update" aria-hidden="true"></span> ';
-		if ($last) {
-			/* translators: 1: relative time, 2: exact time */
-			echo esc_html(sprintf(__('Last indexed %1$s ago', 'labelvier-media-usage'), human_time_diff((int) $last)));
-			echo ' <span class="description">(' . esc_html(wp_date(get_option('date_format') . ' ' . get_option('time_format'), (int) $last)) . ')</span>';
-		} else {
-			echo esc_html__('Never indexed', 'labelvier-media-usage');
-		}
+		echo '<p class="lvmu-status__last"><span id="lvmu-status-icon" class="dashicons dashicons-update' . ($running ? ' lvmu-spin' : '') . '" aria-hidden="true"></span> ';
+		echo '<span id="lvmu-status-line">' . esc_html($payload['line']) . '</span>';
+		echo ' <span id="lvmu-status-date" class="description">' . esc_html($payload['line_date']) . '</span>';
 		echo '</p>';
 
 		echo '<div id="lvmu-progress" class="lvmu-progress" ' . ($running ? '' : 'hidden') . '>';
@@ -399,9 +463,9 @@ class Page {
 			$p['phase_label']
 		) : __('Starting…', 'labelvier-media-usage');
 		if ($p['detail']) {
-			$text .= ' (' . $p['detail'] . ')';
+			$text .= ' — ' . $p['detail'];
 		}
-		return $text . ' - ' . $p['percent'] . '%';
+		return $text . ' (' . $p['percent'] . '%)';
 	}
 
 	private static function card(string $class, string $title, array $stat, array $args, array $sub = []): void {
