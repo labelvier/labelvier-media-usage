@@ -15,6 +15,11 @@ files (including zips, sql dumps and logs).
 - Filter on type, role, usage, orphaned and size. Bulk delete works on the selection or
   on all files matching the current filters. Files marked as used are only deleted when
   "Also delete files marked as used" is checked.
+- Bulk deletes run in the background: they are scheduled through Action Scheduler and
+  listed at the top of the page, with a **Cancel** link as long as a job has not started.
+  Running jobs show their progress, finished jobs show the result (deleted, freed, skipped)
+  and can be dismissed. A job waits while an index run is active. Files in a scheduled job
+  are marked and cannot be selected again. Deleting a single file from its row stays immediate.
 
 ### File roles
 

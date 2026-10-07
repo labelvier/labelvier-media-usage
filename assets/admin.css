@@ -72,3 +72,11 @@
 @media (max-width: 782px) { .lvmu-wrap .column-thumb { display: none; } }
 .lvmu-delete--locked, .lvmu-delete--locked:hover { color: #a7aaad !important; cursor: not-allowed; text-decoration: none; }
 .lvmu-used-hint { font-style: italic; }
+
+.lvmu-badge--scheduled { background: #fcf0c3; color: #4f3b00; margin-left: 6px; }
+.lvmu-jobs .notice p { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.lvmu-jobs .dashicons { color: #2271b1; }
+.lvmu-jobs .lvmu-spin { animation: lvmu-spin 1.2s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .lvmu-jobs .lvmu-spin { animation: none; } }
+.lvmu-jobs .lvmu-job__actions { margin-left: auto; }
+.lvmu-jobs .lvmu-details { flex-basis: 100%; }

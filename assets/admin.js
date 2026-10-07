@@ -24,6 +24,15 @@
 		setText('lvmu-status-line', d.line);
 		setText('lvmu-status-date', d.line_date);
 	}
+	var jobsBox = document.getElementById('lvmu-jobs');
+	var indexing = !!cfg.running;
+	var jobsSeen = !!cfg.jobs;
+	function showJobs(d) {
+		if (jobsBox && typeof d.jobs_html === 'string' && jobsBox.innerHTML !== d.jobs_html) {
+			// Keep expanded details open while nothing changed in them.
+			if (!jobsBox.querySelector('details[open]')) { jobsBox.innerHTML = d.jobs_html; }
+		}
+	}
 	function poll() {
 		var body = new URLSearchParams({ action: 'lvmu_status', nonce: cfg.nonce });
 		fetch(cfg.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: body })
@@ -31,7 +40,9 @@
 			.then(function (res) {
 				if (!res || !res.success) { return; }
 				var d = res.data;
-				if (d.status === 'running') {
+				showJobs(d);
+				if (d.status === 'running' && box) {
+					indexing = true;
 					var bar = box.querySelector('.lvmu-bar');
 					// Never let the bar go backwards within one run.
 					if (maxSeen.scan !== d.scan_id) { maxSeen = { scan: d.scan_id, percent: 0 }; }
@@ -42,16 +53,23 @@
 					setText('lvmu-progress-text', pct === d.percent ? d.text : d.text.replace(/\(\d+%\)$/, '(' + pct + '%)'));
 					bar.setAttribute('aria-valuenow', pct);
 					bar.firstElementChild.style.width = pct + '%';
+					jobsSeen = jobsSeen || d.jobs_active;
 					setTimeout(poll, cfg.interval || 3000);
-				} else {
+				} else if (indexing) {
 					showStatus(d);
 					setText('lvmu-progress-text', i18n.done || '');
+					window.location.href = window.location.pathname + '?page=lvmu';
+				} else if (d.jobs_active) {
+					jobsSeen = true;
+					setTimeout(poll, cfg.interval || 3000);
+				} else if (jobsSeen) {
+					// Last delete job finished: reload so the list and totals are current.
 					window.location.href = window.location.pathname + '?page=lvmu';
 				}
 			})
 			.catch(function () { setTimeout(poll, (cfg.interval || 3000) * 2); });
 	}
-	if (box && cfg.running) { setTimeout(poll, 1500); }
+	if ((box && cfg.running) || cfg.jobs) { setTimeout(poll, 1500); }
 
 	/* ---------- list table ---------- */
 	var form = document.getElementById('lvmu-bulk-form');

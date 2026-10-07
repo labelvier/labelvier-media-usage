@@ -2,6 +2,7 @@
 
 namespace LabelvierMediaUsage\Admin;
 
+use LabelvierMediaUsage\DeleteQueue;
 use LabelvierMediaUsage\Deleter;
 use LabelvierMediaUsage\FileRepository;
 use LabelvierMediaUsage\ScanState;
@@ -62,6 +63,7 @@ class Page {
 			'ajaxUrl'  => admin_url('admin-ajax.php'),
 			'nonce'    => wp_create_nonce('lvmu_status'),
 			'running'  => ScanState::is_running(),
+			'jobs'     => DeleteQueue::has_active(),
 			'interval' => 3000,
 			'i18n'     => [
 				'confirmBulk'    => __('Permanently delete %1$s files (%2$s)? This cannot be undone.', 'labelvier-media-usage'),
@@ -95,6 +97,19 @@ class Page {
 			self::run_delete([$id], !empty($_GET['lvmu_allow_used']));
 		}
 
+		// Cancel / dismiss a scheduled deletion.
+		if (isset($_GET['lvmu_action'], $_GET['job']) && in_array($_GET['lvmu_action'], ['cancel_job', 'dismiss_job'], true)) {
+			$job = absint($_GET['job']);
+			check_admin_referer('lvmu_job_' . $job);
+			if ($_GET['lvmu_action'] === 'cancel_job') {
+				wp_safe_redirect(self::url(['lvmu_job_cancelled' => DeleteQueue::cancel($job) ? 1 : 0]));
+			} else {
+				DeleteQueue::dismiss($job);
+				wp_safe_redirect(self::url());
+			}
+			exit;
+		}
+
 		// Bulk delete.
 		if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
 			$action = isset($_POST['action']) && $_POST['action'] !== '-1' ? sanitize_key($_POST['action']) : (isset($_POST['action2']) ? sanitize_key($_POST['action2']) : '');
@@ -106,9 +121,22 @@ class Page {
 				} else {
 					$ids = isset($_POST['file']) ? array_map('absint', (array) wp_unslash($_POST['file'])) : [];
 				}
-				self::run_delete($ids, $allow_used);
+				self::schedule_delete($ids, $allow_used);
 			}
 		}
+	}
+
+	/** Bulk deletes run in the background through DeleteQueue. */
+	private static function schedule_delete(array $ids, bool $allow_used): void {
+		$ids = array_diff(array_filter(array_map('intval', $ids)), DeleteQueue::scheduled_ids());
+		if (!$ids || Deleter::disabled_reason() !== '') {
+			wp_safe_redirect(self::url(['lvmu_scheduled' => 0]));
+			exit;
+		}
+		$job = DeleteQueue::schedule($ids, $allow_used, get_current_user_id());
+		self::kick_runner();
+		wp_safe_redirect(self::url(['lvmu_scheduled' => $job]));
+		exit;
 	}
 
 	private static function run_delete(array $ids, bool $allow_used): void {
@@ -208,8 +236,13 @@ class Page {
 		if ($state['status'] === 'running' && method_exists(Scheduler::class, 'run_pending_inline')) {
 			Scheduler::run_pending_inline();
 			$state = ScanState::get();
+		} elseif (DeleteQueue::has_active()) {
+			DeleteQueue::run_pending_inline();
 		}
-		wp_send_json_success(self::status_payload($state));
+		$payload                = self::status_payload($state);
+		$payload['jobs_active'] = DeleteQueue::has_active();
+		$payload['jobs_html']   = self::jobs_html();
+		wp_send_json_success($payload);
 	}
 
 	/**
@@ -345,6 +378,7 @@ class Page {
 		echo '<h1 class="wp-heading-inline">' . esc_html__('Media Usage', 'labelvier-media-usage') . '</h1><hr class="wp-header-end">';
 
 		self::render_result_notice();
+		echo '<div id="lvmu-jobs" class="lvmu-jobs">' . self::jobs_html() . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
 		$blocked = Deleter::disabled_reason();
 		if ($blocked !== '') {
 			echo '<div class="notice notice-warning inline lvmu-delete-disabled"><p>' . esc_html($blocked) . '</p></div>';
@@ -376,6 +410,23 @@ class Page {
 				echo '<div class="notice notice-info is-dismissible"><p>' . esc_html__('Indexing started. This page updates automatically.', 'labelvier-media-usage') . '</p></div>';
 			} else {
 				echo '<div class="notice notice-warning is-dismissible"><p>' . esc_html__('Could not start indexing (already running or the scheduler is unavailable).', 'labelvier-media-usage') . '</p></div>';
+			}
+		}
+
+		if (isset($_GET['lvmu_job_cancelled'])) {
+			if ($_GET['lvmu_job_cancelled'] === '1') {
+				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Scheduled deletion cancelled.', 'labelvier-media-usage') . '</p></div>';
+			} else {
+				echo '<div class="notice notice-warning is-dismissible"><p>' . esc_html__('The scheduled deletion could not be cancelled: it has already started or finished.', 'labelvier-media-usage') . '</p></div>';
+			}
+		}
+		if (isset($_GET['lvmu_scheduled'])) {
+			$job = DeleteQueue::get(absint($_GET['lvmu_scheduled']));
+			if ($job) {
+				/* translators: %s: number of files and size, like "12 files, 34 MB" */
+				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html(sprintf(__('Deletion of %s scheduled.', 'labelvier-media-usage'), $job['label'])) . '</p></div>';
+			} else {
+				echo '<div class="notice notice-warning is-dismissible"><p>' . esc_html__('Nothing was scheduled: no files selected, already scheduled, or deleting is disabled.', 'labelvier-media-usage') . '</p></div>';
 			}
 		}
 
@@ -412,6 +463,75 @@ class Page {
 			echo '</ul></details>';
 		}
 		echo '</div>';
+	}
+
+	/** Notices for pending, running and recently finished delete jobs. */
+	public static function jobs_html(): string {
+		$jobs = DeleteQueue::jobs();
+		uasort($jobs, static fn($a, $b) => $a['created_at'] <=> $b['created_at']);
+		$out = '';
+		$fmt = static fn($n) => number_format_i18n((int) $n);
+
+		foreach ($jobs as $job) {
+			$id   = (int) $job['id'];
+			$user = get_userdata((int) $job['user_id']);
+			$name = $user ? $user->user_login : __('unknown user', 'labelvier-media-usage');
+			$size = size_format((int) $job['total_size']);
+			$what = sprintf(_n('%1$s file (%2$s)', '%1$s files (%2$s)', (int) $job['count'], 'labelvier-media-usage'), $fmt($job['count']), $size);
+			$link = static fn(string $action, string $label) => '<a href="' . esc_url(wp_nonce_url(self::url(['lvmu_action' => $action, 'job' => $id]), 'lvmu_job_' . $id)) . '">' . esc_html($label) . '</a>';
+
+			if ($job['status'] === 'pending') {
+				/* translators: 1: files and size, 2: relative time, 3: user name */
+				$text = sprintf(__('Scheduled: delete %1$s — queued %2$s ago by %3$s', 'labelvier-media-usage'), $what, human_time_diff((int) $job['created_at']), $name);
+				if ($job['note'] !== '') {
+					$text .= ' (' . $job['note'] . ')';
+				}
+				$out .= '<div class="notice notice-warning inline lvmu-job"><p><span>' . esc_html($text) . '</span>';
+				if (!$job['started_at']) {
+					$out .= '<span class="lvmu-job__actions">' . $link('cancel_job', __('Cancel', 'labelvier-media-usage')) . '</span>';
+				}
+				$out .= '</p></div>';
+			} elseif ($job['status'] === 'running') {
+				/* translators: 1: files and size, 2: files done, 3: total files */
+				$text = sprintf(__('Deleting %1$s: %2$s of %3$s done', 'labelvier-media-usage'), $what, $fmt($job['processed']), $fmt($job['count']));
+				$out .= '<div class="notice notice-info inline lvmu-job"><p><span class="dashicons dashicons-update lvmu-spin" aria-hidden="true"></span><span>' . esc_html($text) . '</span></p></div>';
+			} elseif ($job['status'] === 'done' || $job['status'] === 'failed') {
+				if ((int) $job['finished_at'] < time() - DeleteQueue::RECENT) {
+					continue;
+				}
+				$failed = $job['status'] === 'failed';
+				$class  = $failed || $job['error_count'] ? 'notice-error' : 'notice-success';
+				/* translators: 1: number of files, 2: freed size */
+				$text = sprintf(__('Deleted %1$s files, freed %2$s.', 'labelvier-media-usage'), $fmt($job['deleted']), size_format((int) $job['freed']));
+				if ($failed) {
+					$text = __('Scheduled deletion failed.', 'labelvier-media-usage');
+				}
+				if ($job['skipped_count']) {
+					/* translators: %s: number of files */
+					$text .= ' ' . sprintf(__('Skipped: %s.', 'labelvier-media-usage'), $fmt($job['skipped_count']));
+				}
+				if ($job['error_count']) {
+					/* translators: %s: number of files */
+					$text .= ' ' . sprintf(__('Errors: %s.', 'labelvier-media-usage'), $fmt($job['error_count']));
+				}
+				$out .= '<div class="notice ' . $class . ' inline lvmu-job"><p><span>' . esc_html($text) . '</span><span class="lvmu-job__actions">' . $link('dismiss_job', __('Dismiss', 'labelvier-media-usage')) . '</span></p>';
+				foreach (['skipped' => __('Skipped (%s)', 'labelvier-media-usage'), 'errors' => __('Errors (%s)', 'labelvier-media-usage')] as $k => $label) {
+					if (!$job[$k]) {
+						continue;
+					}
+					$out .= '<details class="lvmu-details"><summary>' . esc_html(sprintf($label, $fmt($job[$k === 'skipped' ? 'skipped_count' : 'error_count']))) . '</summary><ul>';
+					foreach ($job[$k] as $item) {
+						$out .= '<li>' . ($item['path'] !== '' ? '<code>' . esc_html($item['path']) . '</code> &mdash; ' : '') . esc_html($item['reason']) . '</li>';
+					}
+					if (count($job[$k]) < $job[$k === 'skipped' ? 'skipped_count' : 'error_count']) {
+						$out .= '<li>&hellip;</li>';
+					}
+					$out .= '</ul></details>';
+				}
+				$out .= '</div>';
+			}
+		}
+		return $out;
 	}
 
 	private static function render_status(array $state, array $summary): void {

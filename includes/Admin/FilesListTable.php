@@ -2,6 +2,7 @@
 
 namespace LabelvierMediaUsage\Admin;
 
+use LabelvierMediaUsage\DeleteQueue;
 use LabelvierMediaUsage\Deleter;
 use LabelvierMediaUsage\FileRepository;
 
@@ -19,11 +20,15 @@ class FilesListTable extends \WP_List_Table {
 	private int $matching_size = 0;
 	private string $baseurl;
 
+	/** @var array<int, int> Ids of files in pending/running delete jobs, as keys. */
+	private array $scheduled = [];
+
 	public function __construct(array $filters) {
 		parent::__construct(['singular' => 'file', 'plural' => 'lvmu-files', 'ajax' => false]);
 		$this->filters = $filters;
 		$this->repo    = new FileRepository();
 		$this->baseurl = untrailingslashit(wp_get_upload_dir()['baseurl']);
+		$this->scheduled = array_flip(DeleteQueue::scheduled_ids());
 	}
 
 	public function get_columns(): array {
@@ -123,6 +128,15 @@ class FilesListTable extends \WP_List_Table {
 	}
 
 	protected function column_cb($item): void {
+		if (isset($this->scheduled[(int) $item->id])) {
+			printf(
+				'<label class="screen-reader-text" for="lvmu-cb-%1$d">%2$s</label><input type="checkbox" id="lvmu-cb-%1$d" disabled title="%3$s">',
+				(int) $item->id,
+				esc_html($item->filename),
+				esc_attr__('Scheduled for deletion', 'labelvier-media-usage')
+			);
+			return;
+		}
 		if ($item->usage_status === 'used') {
 			$hint = __("Check 'Also delete files marked as used' to select this file", 'labelvier-media-usage');
 			printf(
@@ -164,6 +178,10 @@ class FilesListTable extends \WP_List_Table {
 	protected function column_file($item): void {
 		$dir = dirname($item->path);
 		echo '<strong class="lvmu-filename">' . esc_html($item->filename) . '</strong>';
+		$scheduled = isset($this->scheduled[(int) $item->id]);
+		if ($scheduled) {
+			echo ' <span class="lvmu-badge lvmu-badge--scheduled">' . esc_html__('Scheduled for deletion', 'labelvier-media-usage') . '</span>';
+		}
 		echo '<br><span class="lvmu-path">' . esc_html($dir === '.' ? '/' : $dir . '/') . '</span>';
 
 		$actions = [
@@ -176,8 +194,8 @@ class FilesListTable extends \WP_List_Table {
 			}
 		}
 		$del = wp_nonce_url(Page::url(['lvmu_action' => 'delete', 'file' => (int) $item->id]), 'lvmu_delete_' . (int) $item->id);
-		if (Deleter::disabled_reason() !== '') {
-			// No delete action while indexing or without a complete index.
+		if ($scheduled || Deleter::disabled_reason() !== '') {
+			// No delete action while scheduled, indexing or without a complete index.
 		} elseif ($item->usage_status === 'used') {
 			$actions['delete'] = '<a class="submitdelete lvmu-confirm lvmu-delete--locked" href="' . esc_url($del) . '" data-lvmu-used="1" aria-disabled="true" title="' . esc_attr__("Check 'Also delete files marked as used' to delete this file", 'labelvier-media-usage') . '">' . esc_html__('Delete', 'labelvier-media-usage') . '</a>';
 		} else {
