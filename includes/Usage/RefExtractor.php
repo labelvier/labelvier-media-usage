@@ -30,6 +30,15 @@ class RefExtractor {
 	private string $date_re;
 	private string $name_re;
 	private AcfFieldTypes $acf;
+	private string $marker_re = '';
+	/** @var array<string, true> */
+	private array $ext_set = [];
+
+	/** Attribute / key names (besides media-ish keys) that hold attachment ids. */
+	private const ID_ATTR = '~(?:_ids?|ids|images?|gallery)$~i';
+
+	/** Unified id list: "12", "12,13", "12|13". */
+	private const ID_LIST = '\d+(?:\s*[,|]\s*\d+)*';
 
 	/**
 	 * @param string[] $extensions known file extensions for name refs
@@ -47,6 +56,8 @@ class RefExtractor {
 		$this->date_re = "~(?<![a-z0-9_-])(\d{4}/\d{2}/{$s}{1,200}?\.[a-z0-9]{1,8}){$term}~i";
 		$this->name_re = "~(?<![^{$d}])({$s}{1,200}?\.(?:{$e})){$term}~i";
 		$this->acf     = $acf;
+		$this->marker_re = "~(?<![a-z0-9_-])(?:{$m})(.+)\$~is";
+		$this->ext_set   = array_fill_keys(array_map('strtolower', $extensions), true);
 	}
 
 	/**
@@ -101,6 +112,26 @@ class RefExtractor {
 	}
 
 	/**
+	 * Attribute / JSON key that (probably) holds attachment ids: media-ish keys plus
+	 * *_id, *_ids, ids, image(s), gallery.
+	 */
+	public static function is_id_key(string $key): bool {
+		if (self::is_media_key($key)) {
+			return true;
+		}
+		return (bool) preg_match(self::ID_ATTR, $key) && !preg_match(self::NON_ID_KEY, $key);
+	}
+
+	/**
+	 * Split "1,2" / "1|2" / "1, 2" into ints.
+	 *
+	 * @return int[]
+	 */
+	private static function split_ids(string $list): array {
+		return array_map('intval', preg_split('~\s*[,|]\s*~', trim($list)) ?: []);
+	}
+
+	/**
 	 * Attachment ids from a stored value: "12", "12,13", serialized list, JSON list.
 	 * Serialized arrays only yield values of integer keys or media-ish keys.
 	 *
@@ -114,8 +145,8 @@ class RefExtractor {
 		if (ctype_digit($value)) {
 			return self::valid_ids([(int) $value]);
 		}
-		if (preg_match('~^\d+(?:\s*,\s*\d+)+$~', $value)) {
-			return self::valid_ids(array_map('intval', explode(',', $value)));
+		if (preg_match('~^' . self::ID_LIST . '$~', $value)) {
+			return self::valid_ids(self::split_ids($value));
 		}
 		if (str_starts_with($value, 'a:')) {
 			$ids = [];
@@ -129,7 +160,7 @@ class RefExtractor {
 			}
 			return self::valid_ids($ids);
 		}
-		if (str_starts_with($value, '[')) {
+		if (str_starts_with($value, '[') || str_starts_with($value, '{')) {
 			$decoded = json_decode($value, true);
 			return is_array($decoded) ? self::ids_from_mixed($decoded) : [];
 		}
@@ -146,13 +177,27 @@ class RefExtractor {
 			return self::valid_ids([$value]);
 		}
 		if (is_string($value)) {
-			return preg_match('~^\s*\d+(?:\s*,\s*\d+)*\s*$~', $value) ? self::valid_ids(array_map('intval', explode(',', $value))) : [];
+			return preg_match('~^\s*' . self::ID_LIST . '\s*$~', $value) ? self::valid_ids(self::split_ids($value)) : [];
 		}
 		if (is_array($value)) {
 			$ids = [];
+			foreach (['id', 'ID', 'attachment_id'] as $k) {
+				if (isset($value[$k]) && !is_array($value[$k])) {
+					$ids = array_merge($ids, self::ids_from_mixed($value[$k]));
+				}
+			}
 			foreach ($value as $item) {
 				if (is_int($item) || (is_string($item) && ctype_digit($item))) {
 					$ids[] = (int) $item;
+				} elseif (is_string($item)) {
+					$ids = array_merge($ids, self::ids_from_mixed($item));
+				} elseif (is_array($item)) {
+					// Media objects: {"id": 12, "url": ...} / {"ID": 12}.
+					foreach (['id', 'ID', 'attachment_id'] as $k) {
+						if (isset($item[$k])) {
+							$ids = array_merge($ids, self::ids_from_mixed($item[$k]));
+						}
+					}
 				}
 			}
 			return self::valid_ids($ids);
@@ -184,9 +229,14 @@ class RefExtractor {
 			}
 			if (preg_match_all($this->name_re, $t, $m)) {
 				foreach ($m[1] as $n) {
-					$n = mb_strtolower(rawurldecode($n));
-					if (strlen($n) <= 255) {
-						$out['name:' . $n] = ['name', $n];
+					$this->add_name($out, $n);
+				}
+			}
+			if (str_contains($t, '=') && preg_match_all('~=\s*(?:"([^"<>]{1,1100})"|\'([^\'<>]{1,1100})\')~', $t, $m, PREG_SET_ORDER)) {
+				foreach ($m as $pair) {
+					$v = $pair[1] !== '' ? $pair[1] : ($pair[2] ?? '');
+					if (str_contains($v, '.')) {
+						$this->add_attribute_value($out, $v);
 					}
 				}
 			}
@@ -204,10 +254,21 @@ class RefExtractor {
 			}
 		}
 
-		if (str_contains($t, '[') && preg_match_all('~\[(?:gallery|playlist)\b[^\]]*?\b(?:ids|include)\s*=\s*["\']?([\d,\s]+)~i', $t, $m)) {
+		if (str_contains($t, '[') && preg_match_all('~\[(?:gallery|playlist)\b[^\]]*?\b(?:ids|include)\s*=\s*\\\\?["\']?(' . self::ID_LIST . ')~i', $t, $m)) {
 			foreach ($m[1] as $list) {
-				foreach (explode(',', $list) as $id) {
-					$this->add_id($out, (int) trim($id));
+				foreach (self::split_ids($list) as $id) {
+					$this->add_id($out, $id);
+				}
+			}
+		}
+
+		// Generic attribute="12" / attribute="12,13": [vc_single_image image="1"], [et_pb_gallery gallery_ids="1,2"].
+		if (str_contains($t, '=') && preg_match_all('~\b([\w-]+)\s*=\s*\\\\*["\']?(' . self::ID_LIST . ')~', $t, $m, PREG_SET_ORDER)) {
+			foreach ($m as $pair) {
+				if (self::is_id_key($pair[1])) {
+					foreach (self::split_ids($pair[2]) as $id) {
+						$this->add_id($out, $id);
+					}
 				}
 			}
 		}
@@ -223,18 +284,22 @@ class RefExtractor {
 
 		// JSON "media_key": id and "media_key": [ids].
 		if (str_contains($t, '":')) {
-			if (preg_match_all('~"([a-z0-9_\-]{1,100})"\s*:\s*"?(\d+)\b~i', $t, $m, PREG_SET_ORDER)) {
+			if (preg_match_all('~"([a-z0-9_\-]{1,100})"\s*:\s*"?(' . self::ID_LIST . ')~i', $t, $m, PREG_SET_ORDER)) {
 				foreach ($m as $pair) {
-					if (self::is_media_key($pair[1])) {
-						$this->add_id($out, (int) $pair[2]);
+					if (self::is_id_key($pair[1])) {
+						foreach (self::split_ids($pair[2]) as $id) {
+							$this->add_id($out, $id);
+						}
 					}
 				}
 			}
 			if (preg_match_all('~"([a-z0-9_\-]{1,100})"\s*:\s*\[([\d\s,"]*)\]~i', $t, $m, PREG_SET_ORDER)) {
 				foreach ($m as $pair) {
-					if (self::is_media_key($pair[1])) {
+					if (self::is_id_key($pair[1])) {
 						foreach (explode(',', str_replace('"', '', $pair[2])) as $id) {
-							$this->add_id($out, (int) trim($id));
+							foreach (self::split_ids($id) as $one) {
+								$this->add_id($out, $one);
+							}
 						}
 					}
 				}
@@ -242,17 +307,122 @@ class RefExtractor {
 		}
 	}
 
-	private function add_path(array &$out, string $path): void {
-		$path = rawurldecode($path);
-		$path = preg_replace('~/{2,}~', '/', str_replace('\\', '/', $path)) ?? $path;
-		$path = ltrim($path, '/');
-		while (str_starts_with($path, './')) {
-			$path = substr($path, 2);
+	/**
+	 * Decoded variants of an encoded string: rawurldecode, urldecode (plus as space) and,
+	 * when decoding gives invalid UTF-8 (latin1 `caf%E9.pdf`), the latin1 -> UTF-8
+	 * conversion plus the raw form.
+	 *
+	 * @return string[]
+	 */
+	private static function variants(string $s): array {
+		$v = [];
+		foreach ([rawurldecode($s), urldecode($s)] as $d) {
+			if (mb_check_encoding($d, 'UTF-8')) {
+				$v[$d] = true;
+			} else {
+				$v[mb_convert_encoding($d, 'UTF-8', 'ISO-8859-1')] = true;
+				$v[$s] = true;
+			}
 		}
-		if ($path === '' || str_contains($path, '../') || strlen($path) > 1024) {
+		return array_keys($v);
+	}
+
+	private static function lower(string $s): string {
+		return mb_strtolower(mb_scrub($s, 'UTF-8'));
+	}
+
+	private function add_name(array &$out, string $name): void {
+		foreach (self::variants($name) as $n) {
+			$n = self::lower($n);
+			if ($n !== '' && strlen($n) <= 255) {
+				$out['name:' . $n] = ['name', $n];
+			}
+		}
+	}
+
+	private function add_path(array &$out, string $path): void {
+		foreach (self::variants($path) as $p) {
+			$p = preg_replace('~/{2,}~', '/', str_replace('\\', '/', $p)) ?? $p;
+			$p = ltrim($p, '/');
+			while (str_starts_with($p, './')) {
+				$p = substr($p, 2);
+			}
+			if ($p === '' || str_contains($p, '../') || strlen($p) > 1024) {
+				continue;
+			}
+			$out['path:' . $p] = ['path', $p];
+		}
+	}
+
+	/**
+	 * A full quoted attribute value (may contain unencoded spaces): path and name refs.
+	 */
+	private function add_attribute_value(array &$out, string $value): void {
+		$value = trim($value);
+		if ($value === '' || strlen($value) > 1024) {
 			return;
 		}
-		$out['path:' . $path] = ['path', $path];
+		foreach (array_merge([$value], self::variants($value)) as $v) {
+			$v = preg_replace('~[?#].*$~s', '', $v) ?? $v;
+			$v = str_replace('\\', '/', $v);
+			if ($v === '') {
+				continue;
+			}
+			$base = strtolower(pathinfo(basename($v), PATHINFO_EXTENSION));
+			if (!isset($this->ext_set[$base])) {
+				continue;
+			}
+			if ($this->marker_re !== '' && preg_match($this->marker_re, $v, $m)) {
+				$this->add_path($out, $m[1]);
+			} elseif (preg_match('~(?<![0-9])(\d{4}/\d{2}/.+)$~s', $v, $m)) {
+				$this->add_path($out, $m[1]);
+			}
+			$name = self::lower(basename($v));
+			if ($name !== '' && strlen($name) <= 255) {
+				$out['name:' . $name] = ['name', $name];
+			}
+		}
+	}
+
+	/**
+	 * Refs for relative urls inside a file stored in uploads (css url(), html src/href),
+	 * resolved against the directory of that file (uploads-relative, no leading slash).
+	 *
+	 * @return array<int, array{0: string, 1: string}>
+	 */
+	public function extract_relative(string $content, string $dir): array {
+		$out = [];
+		if (!preg_match_all('~(?:url\(\s*["\']?|@import\s+["\']|\b(?:src|href|poster|data|data-src|xlink:href)\s*=\s*["\'])([^"\')>]{1,1000})~i', $content, $m)) {
+			return [];
+		}
+		foreach ($m[1] as $url) {
+			$url = trim($url);
+			if ($url === '' || preg_match('~^(?:[a-z][a-z0-9+.-]*:|//|/|#)~i', $url)) {
+				continue;
+			}
+			$url = preg_replace('~[?#].*$~s', '', $url) ?? $url;
+			foreach (self::variants($url) as $u) {
+				$parts = $dir === '' ? [] : explode('/', trim($dir, '/'));
+				foreach (explode('/', $u) as $seg) {
+					if ($seg === '' || $seg === '.') {
+						continue;
+					}
+					if ($seg === '..') {
+						if (!$parts) {
+							continue 2;
+						}
+						array_pop($parts);
+						continue;
+					}
+					$parts[] = $seg;
+				}
+				$path = implode('/', $parts);
+				if ($path !== '' && strlen($path) <= 1024) {
+					$out['path:' . $path] = ['path', $path];
+				}
+			}
+		}
+		return array_values($out);
 	}
 
 	/**

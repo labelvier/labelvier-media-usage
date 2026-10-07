@@ -22,7 +22,16 @@ use LabelvierMediaUsage\Schema;
  * Everything else counts, including caches like Yoast indexables / SEO links (safer).
  * References from an attachment's own postmeta are dropped later by the resolver.
  *
- * Work list items (kind): table (text scan), acf (ACF meta self-join), files (theme files).
+ * Text files inside uploads (css, html, js, svg, ...) are scanned too: a font or image that
+ * is only referenced from such a file is in use (source_type file / source_table uploads).
+ *
+ * Query errors never silently skip a table: the batch is halved down to 1 row and if that
+ * still fails an exception is thrown (the scan fails and deletes stay blocked), except for
+ * tables matched by the filter `lvmu_ref_scan_error_tolerant_tables` (regex list).
+ * A ref that cannot be stored throws as well.
+ *
+ * Work list items (kind): table (text scan), acf (ACF meta self-join), files (theme files),
+ * uploads (text files in uploads).
  */
 class RefScanner implements PhaseInterface {
 
@@ -40,6 +49,10 @@ class RefScanner implements PhaseInterface {
 	private const USERS_SKIP_COLS = ['user_pass', 'user_activation_key'];
 	private const EXTRA_EXTENSIONS = ['psd', 'ai', 'eps', 'indd', 'svgz', 'woff', 'woff2', 'ttf', 'otf', 'eot', 'vtt', 'srt', 'epub', 'jfif', 'dwg', 'swf'];
 	private const THEME_FILE_EXTENSIONS = ['php', 'css', 'scss', 'sass', 'less', 'js', 'json', 'html', 'htm', 'twig'];
+
+	private const UPLOAD_TEXT_EXTENSIONS = ['css', 'html', 'htm', 'js', 'json', 'svg', 'xml', 'txt'];
+	private const UPLOAD_TEXT_MAX_BYTES = 2 * 1024 * 1024;
+	private const UPLOAD_TEXT_MAX_FILES = 20000;
 
 	private const TARGET_BYTES = 4 * 1024 * 1024;
 	private const MIN_BATCH    = 10;
@@ -100,9 +113,16 @@ class RefScanner implements PhaseInterface {
 
 			$started = microtime(true);
 			$limit   = $state['batch'] ?: $item['batch'];
-			[$count, $bytes, $done] = $item['kind'] === 'files'
-				? $this->process_files($item, $state, $scan_id, $limit)
-				: $this->process_table($item, $state, $scan_id, $limit);
+			if ($item['kind'] === 'files') {
+				[$count, $bytes, $done] = $this->process_files($item, $state, $scan_id, $limit);
+			} elseif ($item['kind'] === 'uploads') {
+				[$count, $bytes, $done] = $this->process_uploads($item, $state, $scan_id, $limit);
+			} else {
+				[$count, $bytes, $done] = $this->process_table($item, $state, $scan_id, $limit);
+				if (!$done && $state['batch'] && $state['batch'] < $limit) {
+					$limit = $state['batch']; // reduced after a query error
+				}
+			}
 			$elapsed = microtime(true) - $started;
 
 			$state['rows']    += $count;
@@ -114,7 +134,7 @@ class RefScanner implements PhaseInterface {
 				$state['cursor'] = null;
 				$state['offset'] = 0;
 				$state['batch']  = 0;
-			} elseif ($item['kind'] !== 'files') {
+			} elseif (!in_array($item['kind'], ['files', 'uploads'], true)) {
 				// Adapt batch size to the amount of text per row.
 				if ($bytes > self::TARGET_BYTES || $elapsed > 5) {
 					$limit = max(self::MIN_BATCH, intdiv($limit, 2));
@@ -181,16 +201,29 @@ class RefScanner implements PhaseInterface {
 				? $item['pk'] . ' > ' . (int) $state['cursor']
 				: $wpdb->prepare($item['pk'] . ' > %s', $state['cursor']);
 		}
-		$sql = "SELECT {$item['select']} FROM {$item['from']}" . ($where ? ' WHERE ' . implode(' AND ', $where) : '');
-		$sql .= $item['pk'] !== ''
-			? " ORDER BY {$item['pk']} LIMIT {$limit}"
-			: " LIMIT {$limit} OFFSET " . (int) $state['offset'];
+		$base_sql = "SELECT {$item['select']} FROM {$item['from']}" . ($where ? ' WHERE ' . implode(' AND ', $where) : '');
 
-		$wpdb->last_error = '';
-		$rows = $wpdb->get_results($sql, ARRAY_A);
-		if ($wpdb->last_error !== '') {
-			$state['skipped'][] = $item['table'] . ' (' . $item['kind'] . '): ' . $wpdb->last_error;
-			return [0, 0, true];
+		while (true) {
+			$sql = $base_sql . ($item['pk'] !== ''
+				? " ORDER BY {$item['pk']} LIMIT {$limit}"
+				: " LIMIT {$limit} OFFSET " . (int) $state['offset']);
+
+			$wpdb->last_error = '';
+			$rows = $wpdb->get_results($sql, ARRAY_A);
+			if ($wpdb->last_error === '') {
+				break;
+			}
+			$error = $wpdb->last_error;
+			if ($limit > 1) {
+				$limit = max(1, intdiv($limit, 2));
+				$state['batch'] = $limit;
+				continue;
+			}
+			if ($this->error_tolerant($item['table'])) {
+				$state['skipped'][] = $item['table'] . ' (' . $item['kind'] . '): ' . $error;
+				return [0, 0, true];
+			}
+			throw new \RuntimeException(sprintf('Reference scan failed on table %s (%s): %s', $item['table'], $item['kind'], $error));
 		}
 
 		$refs  = [];
@@ -234,6 +267,87 @@ class RefScanner implements PhaseInterface {
 		return [$count, $bytes, $count < $limit];
 	}
 
+	private function error_tolerant(string $table): bool {
+		foreach ((array) apply_filters('lvmu_ref_scan_error_tolerant_tables', []) as $re) {
+			if (is_string($re) && @preg_match($re, $table)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Text files inside uploads (css, html, svg, ...): relative urls are resolved against
+	 * the directory of the file. A referencing file counts even when it is unused itself.
+	 */
+	private function process_uploads(array $item, array &$state, int $scan_id, int $limit): array {
+		$refs  = [];
+		$bytes = 0;
+		$base  = FileRepository::uploads_basedir();
+		$files = array_slice($item['files'], $state['offset'], $limit);
+		foreach ($files as $relative) {
+			$content = @file_get_contents($base . '/' . $relative);
+			if (!is_string($content) || $content === '') {
+				continue;
+			}
+			$bytes += strlen($content);
+			$dir    = str_contains($relative, '/') ? dirname($relative) : '';
+			$self   = mb_strtolower(basename($relative));
+			$found  = array_merge(
+				$this->extractor->extract($content),
+				$this->extractor->extract_relative($content, $dir)
+			);
+			foreach ($found as [$type, $ref]) {
+				if (($type === 'path' && $ref === $relative) || ($type === 'name' && $ref === $self)) {
+					continue; // a file referencing itself is not usage
+				}
+				$refs[] = [$type, $ref, 'file', 'uploads', $relative, 'content'];
+			}
+		}
+		$state['found']  += $this->insert($refs, $scan_id);
+		$state['offset'] += count($files);
+		return [count($files), $bytes, $state['offset'] >= count($item['files'])];
+	}
+
+	/**
+	 * Plugin internals (exports, caches) that live in uploads and never count as referencing.
+	 */
+	private static function is_internal(string $name): bool {
+		return in_array($name, ['lvmu', 'lvmu-media-usage', 'labelvier-media-usage'], true) || str_starts_with($name, 'lvmu_');
+	}
+
+	/**
+	 * Text files in uploads (not lvmu internals), relative to the uploads basedir.
+	 *
+	 * @return string[]
+	 */
+	private function uploads_text_files(): array {
+		$base = FileRepository::uploads_basedir();
+		if (!is_dir($base)) {
+			return [];
+		}
+		$files    = [];
+		$iterator = new \RecursiveIteratorIterator(
+			new \RecursiveCallbackFilterIterator(
+				new \RecursiveDirectoryIterator($base, \FilesystemIterator::SKIP_DOTS),
+				static fn(\SplFileInfo $file) => !$file->isLink() && !self::is_internal(strtolower($file->getFilename()))
+			)
+		);
+		foreach ($iterator as $file) {
+			if (count($files) >= self::UPLOAD_TEXT_MAX_FILES) {
+				break;
+			}
+			if ($file->isFile()
+				&& $file->getSize() > 0
+				&& $file->getSize() <= self::UPLOAD_TEXT_MAX_BYTES
+				&& in_array(strtolower($file->getExtension()), self::UPLOAD_TEXT_EXTENSIONS, true)
+			) {
+				$files[] = substr(wp_normalize_path($file->getPathname()), strlen($base) + 1);
+			}
+		}
+		return $files;
+	}
+
 	/**
 	 * Theme files (php/css/js/...): images referenced from code are in use as well.
 	 */
@@ -258,36 +372,66 @@ class RefScanner implements PhaseInterface {
 	}
 
 	/**
-	 * Multi-row insert into lvmu_refs, deduplicated per batch.
+	 * Multi-row insert into lvmu_refs, deduplicated per batch. Every value is scrubbed to
+	 * valid UTF-8 and cut to its column length. A failing chunk is retried row by row; a row
+	 * that still fails throws, so refs are never lost silently.
 	 *
 	 * @param array<int, array{0: string, 1: string, 2: string, 3: string, 4: string, 5: string}> $refs
 	 */
 	private function insert(array $refs, int $scan_id): int {
-		global $wpdb;
 		if (!$refs) {
 			return 0;
 		}
-		$table  = Schema::refs_table();
 		$unique = [];
-		foreach ($refs as $ref) {
-			$ref[4] = substr($ref[4], 0, 64);
-			$ref[5] = mb_substr($ref[5], 0, 191);
-			$unique[implode("\0", $ref)] = $ref;
-		}
-
-		$values = [];
-		foreach ($unique as [$type, $value, $source_type, $source_table, $source_id, $field]) {
-			if (strlen($value) > 1024) {
+		foreach ($refs as [$type, $value, $source_type, $source_table, $source_id, $field]) {
+			if (mb_strlen($value) > 1024) {
 				continue;
 			}
-			$values[] = "('" . $type . "','" . esc_sql($value) . "','" . md5($type . ':' . $value) . "','"
+			$row = [
+				mb_substr(mb_scrub($type, 'UTF-8'), 0, 10),
+				mb_scrub($value, 'UTF-8'),
+				mb_substr(mb_scrub($source_type, 'UTF-8'), 0, 20),
+				mb_substr(mb_scrub($source_table, 'UTF-8'), 0, 64),
+				mb_substr(mb_scrub($source_id, 'UTF-8'), 0, 64),
+				mb_substr(mb_scrub($field, 'UTF-8'), 0, 191),
+			];
+			$unique[implode("\0", $row)] = $row;
+		}
+
+		foreach (array_chunk(array_values($unique), self::INSERT_CHUNK) as $chunk) {
+			if ($this->insert_rows($chunk, $scan_id) !== false) {
+				continue;
+			}
+			foreach ($chunk as $row) {
+				if ($this->insert_rows([$row], $scan_id) !== false) {
+					continue;
+				}
+				// utf8mb3 columns reject 4-byte characters: retry with those replaced.
+				$row = array_map(static fn(string $v) => preg_replace('/[\x{10000}-\x{10FFFF}]/u', '?', $v) ?? $v, $row);
+				if ($this->insert_rows([$row], $scan_id) === false) {
+					global $wpdb;
+					throw new \RuntimeException(sprintf('Could not store reference "%s" (%s): %s', mb_substr($row[1], 0, 120), $row[0], $wpdb->last_error));
+				}
+			}
+		}
+		return count($unique);
+	}
+
+	/**
+	 * @param array<int, array{0: string, 1: string, 2: string, 3: string, 4: string, 5: string}> $rows
+	 * @return int|bool false on failure
+	 */
+	private function insert_rows(array $rows, int $scan_id) {
+		global $wpdb;
+		$table  = Schema::refs_table();
+		$values = [];
+		foreach ($rows as [$type, $value, $source_type, $source_table, $source_id, $field]) {
+			$values[] = "('" . esc_sql($type) . "','" . esc_sql($value) . "','" . md5($type . ':' . $value) . "','"
 				. esc_sql($source_type) . "','" . esc_sql($source_table) . "','" . esc_sql($source_id) . "','"
 				. esc_sql($field) . "'," . $scan_id . ')';
 		}
-		foreach (array_chunk($values, self::INSERT_CHUNK) as $chunk) {
-			$wpdb->query("INSERT INTO {$table} (ref_type, ref_value, ref_hash, source_type, source_table, source_id, source_field, scan_id) VALUES " . implode(',', $chunk));
-		}
-		return count($values);
+		$wpdb->last_error = '';
+		return $wpdb->query("INSERT INTO {$table} (ref_type, ref_value, ref_hash, source_type, source_table, source_id, source_field, scan_id) VALUES " . implode(',', $values));
 	}
 
 	/**
@@ -353,6 +497,11 @@ class RefScanner implements PhaseInterface {
 		$files = $this->theme_files();
 		if ($files) {
 			$items[] = ['kind' => 'files', 'table' => 'theme files', 'files' => $files, 'batch' => 50];
+		}
+
+		$uploads = $this->uploads_text_files();
+		if ($uploads) {
+			$items[] = ['kind' => 'uploads', 'table' => 'uploads files', 'files' => $uploads, 'batch' => 50];
 		}
 
 		return $items;
