@@ -188,6 +188,55 @@ class FileRepository {
 		return array_map('intval', $wpdb->get_col($params ? $wpdb->prepare($sql, $params) : $sql));
 	}
 
+	/**
+	 * SQL conditions for files that can actually be deleted (mirrors Deleter's skip rules).
+	 *
+	 * @return array{0: string[], 1: array}
+	 */
+	private function deletable_where(array $args, bool $allow_used, array $exclude_ids): array {
+		global $wpdb;
+		[$where, $params] = $this->where($args);
+		$where[] = $allow_used ? "usage_status IN ('used','unused')" : "usage_status = 'unused'";
+		$scan_id = (int) ScanState::get()['scan_id'];
+		$where[]  = 'scan_id = %d';
+		$params[] = $scan_id;
+		foreach (Deleter::PROTECTED_NAMES as $name) {
+			$where[]  = '(LOWER(path) <> %s AND LOWER(path) NOT LIKE %s)';
+			$params[] = $name;
+			$params[] = '%/' . $wpdb->esc_like($name);
+		}
+		$exclude_ids = array_values(array_unique(array_filter(array_map('intval', $exclude_ids))));
+		if ($exclude_ids) {
+			$where[] = 'id NOT IN (' . implode(',', $exclude_ids) . ')';
+		}
+		return [$where, $params];
+	}
+
+	/**
+	 * Ids of matching files that can be deleted under the given state.
+	 *
+	 * @param int[] $exclude_ids Ids already scheduled for deletion.
+	 * @return int[]
+	 */
+	public function deletable_ids(array $args, bool $allow_used, array $exclude_ids = []): array {
+		global $wpdb;
+		$table = Schema::files_table();
+		[$where, $params] = $this->deletable_where($args, $allow_used, $exclude_ids);
+		return array_map('intval', $wpdb->get_col($wpdb->prepare("SELECT id FROM {$table} WHERE " . implode(' AND ', $where), $params)));
+	}
+
+	/**
+	 * @param int[] $exclude_ids Ids already scheduled for deletion.
+	 * @return array{count: int, size: int}
+	 */
+	public function deletable_totals(array $args, bool $allow_used, array $exclude_ids = []): array {
+		global $wpdb;
+		$table = Schema::files_table();
+		[$where, $params] = $this->deletable_where($args, $allow_used, $exclude_ids);
+		$row = $wpdb->get_row($wpdb->prepare("SELECT COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table} WHERE " . implode(' AND ', $where), $params));
+		return ['count' => (int) $row->c, 'size' => (int) $row->s];
+	}
+
 	private function where(array $args): array {
 		global $wpdb;
 		$where  = [];

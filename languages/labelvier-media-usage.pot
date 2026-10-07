@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-07T08:54:19+00:00\n"
+"POT-Creation-Date: 2026-10-07T08:59:21+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.10.0\n"
 "X-Domain: labelvier-media-usage\n"
@@ -43,12 +43,12 @@ msgid "File"
 msgstr ""
 
 #: includes/Admin/FilesListTable.php:39
-#: includes/Admin/Page.php:780
+#: includes/Admin/Page.php:783
 msgid "Type"
 msgstr ""
 
 #: includes/Admin/FilesListTable.php:40
-#: includes/Admin/Page.php:781
+#: includes/Admin/Page.php:784
 msgid "Role"
 msgstr ""
 
@@ -61,7 +61,7 @@ msgid "Media item"
 msgstr ""
 
 #: includes/Admin/FilesListTable.php:43
-#: includes/Admin/Page.php:782
+#: includes/Admin/Page.php:785
 msgid "Usage"
 msgstr ""
 
@@ -78,8 +78,8 @@ msgid "All"
 msgstr ""
 
 #: includes/Admin/FilesListTable.php:68
-#: includes/Admin/FilesListTable.php:257
-#: includes/Admin/Page.php:784
+#: includes/Admin/FilesListTable.php:277
+#: includes/Admin/Page.php:787
 msgid "Unused"
 msgstr ""
 
@@ -88,90 +88,89 @@ msgid "Orphaned"
 msgstr ""
 
 #: includes/Admin/FilesListTable.php:70
-#: includes/Admin/Page.php:721
-msgid "Orphaned & unused"
+#: includes/Admin/Page.php:707
+msgid "Originals"
 msgstr ""
 
 #: includes/Admin/FilesListTable.php:71
-#: includes/Admin/Page.php:704
-msgid "Originals (pre-scaled)"
-msgstr ""
-
-#: includes/Admin/FilesListTable.php:72
-#: includes/Admin/Page.php:706
+#: includes/Admin/Page.php:709
 msgid "WebP copies"
 msgstr ""
 
 #. translators: %s: number of items
-#: includes/Admin/FilesListTable.php:79
+#: includes/Admin/FilesListTable.php:78
 msgid "%s item"
 msgid_plural "%s items"
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: number of items, 2: total size
-#: includes/Admin/FilesListTable.php:84
-msgid "(%1$s, %2$s)"
+#: includes/Admin/FilesListTable.php:83
+msgid "(%1$s - %2$s)"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:125
+#: includes/Admin/FilesListTable.php:124
 msgid "No files found."
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:136
+#: includes/Admin/FilesListTable.php:134
 msgid "Also delete files marked as used"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:138
+#: includes/Admin/FilesListTable.php:136
 msgid "Warning: files marked as used are referenced in your content. Deleting them will break images and links."
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:152
-#: includes/Admin/FilesListTable.php:199
+#: includes/Admin/FilesListTable.php:157
+msgid "This file protects a folder and is never deleted."
+msgstr ""
+
+#: includes/Admin/FilesListTable.php:172
+#: includes/Admin/FilesListTable.php:219
 msgid "Scheduled for deletion"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:157
+#: includes/Admin/FilesListTable.php:177
 msgid "Check 'Also delete files marked as used' to select this file"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:204
+#: includes/Admin/FilesListTable.php:224
 msgid "View"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:209
+#: includes/Admin/FilesListTable.php:229
 msgid "Edit attachment"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:216
+#: includes/Admin/FilesListTable.php:236
 msgid "Check 'Also delete files marked as used' to delete this file"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:216
-#: includes/Admin/FilesListTable.php:218
+#: includes/Admin/FilesListTable.php:236
+#: includes/Admin/FilesListTable.php:238
 msgid "Delete"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:240
+#: includes/Admin/FilesListTable.php:260
 msgid "Not in Media Library"
 msgstr ""
 
 #. translators: %d: attachment ID
-#: includes/Admin/FilesListTable.php:246
+#: includes/Admin/FilesListTable.php:266
 msgid "Attachment #%d"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:256
-#: includes/Admin/Page.php:783
+#: includes/Admin/FilesListTable.php:276
+#: includes/Admin/Page.php:786
 msgid "Used"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:258
-#: includes/Admin/Page.php:785
+#: includes/Admin/FilesListTable.php:278
+#: includes/Admin/Page.php:788
 msgid "Unknown"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:270
+#: includes/Admin/FilesListTable.php:290
 msgid "Where used"
 msgstr ""
 
@@ -267,408 +266,412 @@ msgstr ""
 msgid "The \"Where used\" column shows what references the file. Used files are locked and cannot be deleted unless \"Also delete files marked as used\" is checked."
 msgstr ""
 
-#: includes/Admin/Page.php:112
-#: includes/Admin/Page.php:113
-#: includes/Admin/Page.php:457
+#: includes/Admin/Page.php:115
+#: includes/Admin/Page.php:116
+#: includes/Admin/Page.php:460
 msgid "Media Usage"
 msgstr ""
 
 #. translators: %s: total size
-#: includes/Admin/Page.php:137
+#: includes/Admin/Page.php:140
 msgid "Permanently delete 1 file (%s)? This cannot be undone."
 msgstr ""
 
 #. translators: 1: number of files, 2: total size
-#: includes/Admin/Page.php:139
+#: includes/Admin/Page.php:142
 msgid "Permanently delete %1$s files (%2$s)? This cannot be undone."
 msgstr ""
 
 #. translators: %s: total size
-#: includes/Admin/Page.php:141
+#: includes/Admin/Page.php:144
 msgid "Permanently delete the 1 matching file (%s)? This cannot be undone."
 msgstr ""
 
 #. translators: 1: number of files, 2: total size
-#: includes/Admin/Page.php:143
+#: includes/Admin/Page.php:146
 msgid "Permanently delete ALL %1$s matching files (%2$s)? This cannot be undone."
 msgstr ""
 
-#: includes/Admin/Page.php:144
+#: includes/Admin/Page.php:147
 msgid "Files marked as used are included. Deleting them may break your site. Continue?"
 msgstr ""
 
-#: includes/Admin/Page.php:145
+#: includes/Admin/Page.php:148
 msgid "Permanently delete this file? This cannot be undone."
 msgstr ""
 
-#: includes/Admin/Page.php:146
+#: includes/Admin/Page.php:149
 msgid "Select at least one file first."
 msgstr ""
 
-#: includes/Admin/Page.php:147
+#: includes/Admin/Page.php:150
 msgid "1 file on this page is selected."
 msgstr ""
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:149
+#: includes/Admin/Page.php:152
 msgid "%s files on this page are selected."
 msgstr ""
 
-#: includes/Admin/Page.php:150
+#: includes/Admin/Page.php:153
 msgid "The 1 matching file is selected."
 msgstr ""
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:152
+#: includes/Admin/Page.php:155
 msgid "All %s matching files are selected."
 msgstr ""
 
-#: includes/Admin/Page.php:153
+#: includes/Admin/Page.php:156
 msgid "Select the 1 matching file"
 msgstr ""
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:155
+#: includes/Admin/Page.php:158
 msgid "Select all %s matching files"
 msgstr ""
 
-#: includes/Admin/Page.php:156
+#: includes/Admin/Page.php:159
 msgid "Clear selection"
 msgstr ""
 
-#: includes/Admin/Page.php:157
+#: includes/Admin/Page.php:160
 msgid "Index finished."
 msgstr ""
 
-#: includes/Admin/Page.php:166
+#: includes/Admin/Page.php:169
 msgid "Files per page"
 msgstr ""
 
-#: includes/Admin/Page.php:284
+#: includes/Admin/Page.php:287
 msgid "You are not allowed to do this."
 msgstr ""
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:358
+#: includes/Admin/Page.php:361
 msgid "File found: %s"
 msgid_plural "Files found: %s"
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: done, 2: total
-#: includes/Admin/Page.php:368
+#: includes/Admin/Page.php:371
 msgid "Linking Media Library items: %1$s of %2$s"
 msgstr ""
 
 #. translators: 1: done, 2: total
-#: includes/Admin/Page.php:378
+#: includes/Admin/Page.php:381
 msgid "Scanning database tables: %1$s of %2$s"
 msgstr ""
 
 #. translators: 1: done, 2: total
-#: includes/Admin/Page.php:392
+#: includes/Admin/Page.php:395
 msgid "Checking files: %1$s of %2$s"
 msgstr ""
 
-#: includes/Admin/Page.php:396
-#: includes/Admin/Page.php:398
+#: includes/Admin/Page.php:399
+#: includes/Admin/Page.php:401
 msgid "Checking resized image versions"
 msgstr ""
 
 #. translators: %s: relative time
-#: includes/Admin/Page.php:422
+#: includes/Admin/Page.php:425
 msgid "Last indexed %s ago"
 msgstr ""
 
-#: includes/Admin/Page.php:424
+#: includes/Admin/Page.php:427
 msgid "Never indexed before"
 msgstr ""
 
-#: includes/Admin/Page.php:424
+#: includes/Admin/Page.php:427
 msgid "Never indexed"
 msgstr ""
 
-#: includes/Admin/Page.php:426
+#: includes/Admin/Page.php:429
 msgid "Indexing…"
 msgstr ""
 
-#: includes/Admin/Page.php:449
+#: includes/Admin/Page.php:452
 msgid "You are not allowed to access this page."
 msgstr ""
 
-#: includes/Admin/Page.php:474
+#: includes/Admin/Page.php:477
 msgid "Files"
 msgstr ""
 
-#: includes/Admin/Page.php:495
+#: includes/Admin/Page.php:498
 msgid "Indexing started. This page updates automatically."
 msgstr ""
 
-#: includes/Admin/Page.php:497
+#: includes/Admin/Page.php:500
 msgid "Could not start indexing (already running or the scheduler is unavailable)."
 msgstr ""
 
-#: includes/Admin/Page.php:503
+#: includes/Admin/Page.php:506
 msgid "Scheduled deletion cancelled."
 msgstr ""
 
-#: includes/Admin/Page.php:505
+#: includes/Admin/Page.php:508
 msgid "The scheduled deletion could not be cancelled: it has already started or finished."
 msgstr ""
 
 #. translators: %s: number of files and size, like "12 files, 34 MB"
-#: includes/Admin/Page.php:512
+#: includes/Admin/Page.php:515
 msgid "Deletion of %s scheduled."
 msgstr ""
 
-#: includes/Admin/Page.php:514
+#: includes/Admin/Page.php:517
 msgid "Nothing was scheduled: no files selected, already scheduled, or deleting is disabled."
 msgstr ""
 
 #. translators: 1: number of files, 2: freed size
-#: includes/Admin/Page.php:530
-#: includes/Admin/Page.php:592
+#: includes/Admin/Page.php:533
+#: includes/Admin/Page.php:595
 msgid "Deleted %1$s file, freed %2$s."
 msgid_plural "Deleted %1$s files, freed %2$s."
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:534
+#: includes/Admin/Page.php:537
 msgid "%s more file was not processed in this request; repeat the action to continue."
 msgid_plural "%s more files were not processed in this request; repeat the action to continue."
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:538
-#: includes/Admin/Page.php:606
+#: includes/Admin/Page.php:541
+#: includes/Admin/Page.php:609
 msgid "Skipped (%s)"
 msgstr ""
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:538
-#: includes/Admin/Page.php:606
+#: includes/Admin/Page.php:541
+#: includes/Admin/Page.php:609
 msgid "Errors (%s)"
 msgstr ""
 
-#: includes/Admin/Page.php:564
+#: includes/Admin/Page.php:567
 msgid "unknown user"
 msgstr ""
 
 #. translators: 1: number of files, 2: total size
-#: includes/Admin/Page.php:567
+#: includes/Admin/Page.php:570
 msgid "%1$s file (%2$s)"
 msgid_plural "%1$s files (%2$s)"
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: files and size, 2: relative time, 3: user name
-#: includes/Admin/Page.php:572
+#: includes/Admin/Page.php:575
 msgid "Scheduled: delete %1$s — queued %2$s ago by %3$s"
 msgstr ""
 
-#: includes/Admin/Page.php:578
+#: includes/Admin/Page.php:581
 msgid "Cancel"
 msgstr ""
 
 #. translators: 1: files and size, 2: files done, 3: total files
-#: includes/Admin/Page.php:583
+#: includes/Admin/Page.php:586
 msgid "Deleting %1$s: %2$s of %3$s done"
 msgstr ""
 
-#: includes/Admin/Page.php:594
+#: includes/Admin/Page.php:597
 msgid "Scheduled deletion failed."
 msgstr ""
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:598
+#: includes/Admin/Page.php:601
 msgid "Skipped: %s."
 msgstr ""
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:602
+#: includes/Admin/Page.php:605
 msgid "Errors: %s."
 msgstr ""
 
-#: includes/Admin/Page.php:604
+#: includes/Admin/Page.php:607
 msgid "Dismiss"
 msgstr ""
 
-#: includes/Admin/Page.php:632
+#: includes/Admin/Page.php:635
 msgid "The uploads folder has never been indexed. Click \"Index now\" to build the file index."
 msgstr ""
 
-#: includes/Admin/Page.php:635
+#: includes/Admin/Page.php:638
 msgid "The last index run failed."
 msgstr ""
 
-#: includes/Admin/Page.php:647
+#: includes/Admin/Page.php:650
 msgid "Indexing progress"
 msgstr ""
 
-#: includes/Admin/Page.php:649
+#: includes/Admin/Page.php:652
 msgid "Indexes automatically every night at 03:00 via Action Scheduler."
 msgstr ""
 
-#: includes/Admin/Page.php:657
+#: includes/Admin/Page.php:660
 msgid "Restart index"
 msgstr ""
 
-#: includes/Admin/Page.php:659
+#: includes/Admin/Page.php:662
 msgid "Index now"
 msgstr ""
 
 #. translators: 1: step, 2: total steps, 3: phase label
-#: includes/Admin/Page.php:668
+#: includes/Admin/Page.php:671
 msgid "Step %1$d of %2$d: %3$s"
 msgstr ""
 
-#: includes/Admin/Page.php:672
+#: includes/Admin/Page.php:675
 msgid "Starting…"
 msgstr ""
 
-#: includes/Admin/Page.php:680
+#: includes/Admin/Page.php:683
 msgid "Full size upload kept next to the -scaled file. Only used when linked directly; safe to delete in most cases."
 msgstr ""
 
-#: includes/Admin/Page.php:686
+#: includes/Admin/Page.php:689
 msgid "file"
 msgid_plural "files"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Admin/Page.php:703
+#: includes/Admin/Page.php:706
 msgid "Main files"
 msgstr ""
 
-#: includes/Admin/Page.php:705
+#: includes/Admin/Page.php:708
 msgid "Generated sizes"
 msgstr ""
 
-#: includes/Admin/Page.php:717
+#: includes/Admin/Page.php:720
 msgid "Total on disk"
 msgstr ""
 
-#: includes/Admin/Page.php:718
+#: includes/Admin/Page.php:721
 msgid "Media Library files"
 msgstr ""
 
-#: includes/Admin/Page.php:719
+#: includes/Admin/Page.php:722
 msgid "Orphaned files"
 msgstr ""
 
-#: includes/Admin/Page.php:720
+#: includes/Admin/Page.php:723
 msgid "Unused (all)"
 msgstr ""
 
-#: includes/Admin/Page.php:730
+#: includes/Admin/Page.php:724
+msgid "Orphaned & unused"
+msgstr ""
+
+#: includes/Admin/Page.php:733
 msgid "Size by file type"
 msgstr ""
 
-#: includes/Admin/Page.php:731
+#: includes/Admin/Page.php:734
 msgid "Size share by file type"
 msgstr ""
 
-#: includes/Admin/Page.php:749
+#: includes/Admin/Page.php:752
 msgid "Images"
 msgstr ""
 
-#: includes/Admin/Page.php:750
+#: includes/Admin/Page.php:753
 msgid "Video"
 msgstr ""
 
-#: includes/Admin/Page.php:751
+#: includes/Admin/Page.php:754
 msgid "Audio"
 msgstr ""
 
-#: includes/Admin/Page.php:752
+#: includes/Admin/Page.php:755
 msgid "Documents"
 msgstr ""
 
-#: includes/Admin/Page.php:753
+#: includes/Admin/Page.php:756
 msgid "Archives"
 msgstr ""
 
-#: includes/Admin/Page.php:754
+#: includes/Admin/Page.php:757
 msgid "Databases"
 msgstr ""
 
-#: includes/Admin/Page.php:755
+#: includes/Admin/Page.php:758
 msgid "Logs"
 msgstr ""
 
-#: includes/Admin/Page.php:756
+#: includes/Admin/Page.php:759
 msgid "Code"
 msgstr ""
 
-#: includes/Admin/Page.php:757
+#: includes/Admin/Page.php:760
 msgid "Other"
 msgstr ""
 
-#: includes/Admin/Page.php:763
+#: includes/Admin/Page.php:766
 msgid "Main"
 msgstr ""
 
-#: includes/Admin/Page.php:764
+#: includes/Admin/Page.php:767
 msgid "Original"
 msgstr ""
 
-#: includes/Admin/Page.php:765
+#: includes/Admin/Page.php:768
 msgctxt "file role: generated image size"
 msgid "Size"
 msgstr ""
 
-#: includes/Admin/Page.php:766
+#: includes/Admin/Page.php:769
 msgid "WebP"
 msgstr ""
 
-#: includes/Admin/Page.php:767
+#: includes/Admin/Page.php:770
 msgid "Orphan"
 msgstr ""
 
-#: includes/Admin/Page.php:780
+#: includes/Admin/Page.php:783
 msgid "All types"
 msgstr ""
 
-#: includes/Admin/Page.php:781
+#: includes/Admin/Page.php:784
 msgid "All roles"
 msgstr ""
 
-#: includes/Admin/Page.php:782
+#: includes/Admin/Page.php:785
 msgid "Any usage"
 msgstr ""
 
 #. translators: %s: size like 1 MB
-#: includes/Admin/Page.php:792
+#: includes/Admin/Page.php:795
 msgid "%s or larger"
 msgstr ""
 
-#: includes/Admin/Page.php:795
+#: includes/Admin/Page.php:798
 msgid "Minimum size"
 msgstr ""
 
-#: includes/Admin/Page.php:795
+#: includes/Admin/Page.php:798
 msgid "Any size"
 msgstr ""
 
-#: includes/Admin/Page.php:797
+#: includes/Admin/Page.php:800
 msgid "Orphaned only"
 msgstr ""
 
-#: includes/Admin/Page.php:798
+#: includes/Admin/Page.php:801
 msgid "Search path"
 msgstr ""
 
-#: includes/Admin/Page.php:799
+#: includes/Admin/Page.php:802
 msgid "Search path…"
 msgstr ""
 
-#: includes/Admin/Page.php:800
+#: includes/Admin/Page.php:803
 msgid "Filter"
 msgstr ""
 
-#: includes/Admin/Page.php:802
+#: includes/Admin/Page.php:805
 msgid "Reset"
 msgstr ""
 

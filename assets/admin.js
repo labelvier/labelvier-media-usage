@@ -111,13 +111,21 @@
 	}
 	function setAll(on) { if (selectAll) { selectAll.value = on ? '1' : '0'; } }
 
+	/* Deletable totals depend on the allow-used checkbox; the server provides both variants. */
+	function barData(key) {
+		var d = bar.dataset, used = { total: 'totalUsed', totalH: 'totalUsedH', size: 'sizeUsed', sizeH: 'sizeUsedH' };
+		if (allowUsedOn() && d[used[key]] !== undefined) { return d[used[key]]; }
+		return d[key];
+	}
+	function barTotal() { return parseInt(barData('total'), 10) || 0; }
+
 	function updateBar() {
 		if (!bar) { return; }
-		var n = checked().length, total = parseInt(bar.dataset.total, 10);
+		var n = checked().length, total = barTotal();
 		bar.textContent = '';
 		if (selectAll.value === '1') {
 			bar.hidden = false;
-			bar.appendChild(document.createTextNode(plural(i18n.allSelectedOne, fmt(i18n.allSelected, bar.dataset.totalH), total) + ' '));
+			bar.appendChild(document.createTextNode(plural(i18n.allSelectedOne, fmt(i18n.allSelected, barData('totalH')), total) + ' '));
 			var c = document.createElement('button');
 			c.type = 'button'; c.className = 'button-link'; c.textContent = i18n.clear;
 			c.addEventListener('click', function () {
@@ -127,12 +135,14 @@
 				updateBar();
 			});
 			bar.appendChild(c);
-		} else if (n > 0 && n === rows().length && total > n) {
+		} else if (n > 0 && n === rows().length) {
 			bar.hidden = false;
-			bar.appendChild(document.createTextNode(plural(i18n.pageSelectedOne, fmt(i18n.pageSelected, n), n) + ' '));
+			bar.appendChild(document.createTextNode(plural(i18n.pageSelectedOne, fmt(i18n.pageSelected, n), n)));
+			if (total <= n) { return; }
+			bar.appendChild(document.createTextNode(' '));
 			var b = document.createElement('button');
 			b.type = 'button'; b.className = 'button-link';
-			b.textContent = plural(i18n.selectAllOne, fmt(i18n.selectAll, bar.dataset.totalH), total);
+			b.textContent = plural(i18n.selectAllOne, fmt(i18n.selectAll, barData('totalH')), total);
 			b.addEventListener('click', function () { setAll(true); updateBar(); });
 			bar.appendChild(b);
 		} else {
@@ -164,8 +174,8 @@
 		if (act !== 'lvmu_delete') { return; }
 		var msg;
 		if (selectAll.value === '1') {
-			var tot = parseInt(bar.dataset.total, 10);
-			msg = plural(fmt(i18n.confirmBulkAllOne, bar.dataset.sizeH), fmt(i18n.confirmBulkAll, bar.dataset.totalH, bar.dataset.sizeH), tot);
+			var tot = barTotal();
+			msg = plural(fmt(i18n.confirmBulkAllOne, barData('sizeH')), fmt(i18n.confirmBulkAll, barData('totalH'), barData('sizeH')), tot);
 		} else {
 			var sel = checked();
 			if (!sel.length) { e.preventDefault(); window.alert(i18n.nothing); return; }

@@ -10,7 +10,7 @@ class Deleter {
 	/** Maximum number of files handled in a single request. */
 	public const MAX_PER_REQUEST = 500;
 
-	private const PROTECTED_NAMES = ['index.php', 'index.html', 'index.htm', '.user.ini', 'web.config', '.htaccess'];
+	public const PROTECTED_NAMES = ['index.php', 'index.html', 'index.htm', '.user.ini', 'web.config', '.htaccess'];
 
 	private FileRepository $repo;
 

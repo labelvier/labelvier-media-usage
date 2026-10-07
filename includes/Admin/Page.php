@@ -79,6 +79,9 @@ class Page {
 			'used' => [__('About used files', 'labelvier-media-usage'), __('The "Where used" column shows what references the file. Used files are locked and cannot be deleted unless "Also delete files marked as used" is checked.', 'labelvier-media-usage')],
 		];
 		$current = self::filter_args($f);
+		if (empty($f['search']) && $current == ['orphaned' => 1, 'usage_status' => 'unused']) {
+			return $texts['orphaned_unused'];
+		}
 		if (empty($f['search'])) {
 			foreach (FilesListTable::view_defs() as $key => [, $args]) {
 				if ($current == $args) {
@@ -196,7 +199,7 @@ class Page {
 				check_admin_referer('bulk-lvmu-files');
 				$allow_used = !empty($_POST['lvmu_allow_used']);
 				if (!empty($_POST['lvmu_select_all'])) {
-					$ids = (new FileRepository())->ids(self::filters_from(wp_unslash($_POST)));
+					$ids = (new FileRepository())->deletable_ids(self::filters_from(wp_unslash($_POST)), $allow_used, DeleteQueue::scheduled_ids());
 				} else {
 					$ids = isset($_POST['file']) ? array_map('absint', (array) wp_unslash($_POST['file'])) : [];
 				}
@@ -701,7 +704,7 @@ class Page {
 		$sub  = [];
 		$role_labels = [
 			'main'     => __('Main files', 'labelvier-media-usage'),
-			'original' => __('Originals (pre-scaled)', 'labelvier-media-usage'),
+			'original' => __('Originals', 'labelvier-media-usage'),
 			'subsize'  => __('Generated sizes', 'labelvier-media-usage'),
 			'webp'     => __('WebP copies', 'labelvier-media-usage'),
 		];

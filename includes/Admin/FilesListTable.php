@@ -67,8 +67,7 @@ class FilesListTable extends \WP_List_Table {
 			'all'             => [__('All', 'labelvier-media-usage'), []],
 			'unused'          => [__('Unused', 'labelvier-media-usage'), ['usage_status' => 'unused']],
 			'orphaned'        => [__('Orphaned', 'labelvier-media-usage'), ['orphaned' => 1]],
-			'orphaned_unused' => [__('Orphaned & unused', 'labelvier-media-usage'), ['orphaned' => 1, 'usage_status' => 'unused']],
-			'originals'       => [__('Originals (pre-scaled)', 'labelvier-media-usage'), ['file_role' => 'original']],
+			'originals'       => [__('Originals', 'labelvier-media-usage'), ['file_role' => 'original']],
 			'webp'            => [__('WebP copies', 'labelvier-media-usage'), ['file_role' => 'webp']],
 		];
 	}
@@ -81,7 +80,7 @@ class FilesListTable extends \WP_List_Table {
 			return '(' . $items . ')';
 		}
 		/* translators: 1: number of items, 2: total size */
-		return sprintf(__('(%1$s, %2$s)', 'labelvier-media-usage'), $items, Page::format_size_mb($bytes));
+		return sprintf(__('(%1$s - %2$s)','labelvier-media-usage'), $items, Page::format_size_mb($bytes));
 	}
 
 	protected function get_views(): array {
@@ -130,20 +129,41 @@ class FilesListTable extends \WP_List_Table {
 		if ($which !== 'top' || Deleter::disabled_reason() !== '') {
 			return;
 		}
-		$total = (int) $this->_pagination_args['total_items'];
 		echo '<div class="alignleft actions lvmu-bulk-extra">';
 		echo '<input type="hidden" name="lvmu_select_all" id="lvmu-select-all" value="0">';
 		echo '<label class="lvmu-check"><input type="checkbox" name="lvmu_allow_used" id="lvmu-allow-used" value="1"> ' . esc_html__('Also delete files marked as used', 'labelvier-media-usage') . '</label>';
 		echo '</div>';
 		echo '<div class="lvmu-allow-warning notice notice-warning inline" id="lvmu-used-warning" hidden><p>' . esc_html__('Warning: files marked as used are referenced in your content. Deleting them will break images and links.', 'labelvier-media-usage') . '</p></div>';
+		$sched = DeleteQueue::scheduled_ids();
+		$base  = $this->repo->deletable_totals($this->filters, false, $sched);
+		$used  = $this->repo->deletable_totals($this->filters, true, $sched);
 		echo '<div class="lvmu-select-all-bar" id="lvmu-select-all-bar" hidden role="status" aria-live="polite"'
-			. ' data-total="' . esc_attr((string) $total) . '"'
-			. ' data-total-h="' . esc_attr(number_format_i18n($total)) . '"'
-			. ' data-size="' . esc_attr((string) $this->matching_size) . '"'
-			. ' data-size-h="' . esc_attr(size_format($this->matching_size)) . '"></div>';
+			. ' data-total="' . esc_attr((string) $base['count']) . '"'
+			. ' data-total-h="' . esc_attr(number_format_i18n($base['count'])) . '"'
+			. ' data-size="' . esc_attr((string) $base['size']) . '"'
+			. ' data-size-h="' . esc_attr(size_format($base['size'])) . '"'
+			. ' data-total-used="' . esc_attr((string) $used['count']) . '"'
+			. ' data-total-used-h="' . esc_attr(number_format_i18n($used['count'])) . '"'
+			. ' data-size-used="' . esc_attr((string) $used['size']) . '"'
+			. ' data-size-used-h="' . esc_attr(size_format($used['size'])) . '"></div>';
+	}
+
+	private function is_protected(object $item): bool {
+		return in_array(strtolower((string) $item->filename), array_map('strtolower', Deleter::PROTECTED_NAMES), true);
 	}
 
 	protected function column_cb($item): void {
+		if ($this->is_protected($item)) {
+			$hint = __('This file protects a folder and is never deleted.', 'labelvier-media-usage');
+			printf(
+				'<label class="screen-reader-text" for="lvmu-cb-%1$d">%2$s <span class="lvmu-protected-hint">(%3$s)</span></label><input type="checkbox" id="lvmu-cb-%1$d" data-lvmu-protected="1" disabled title="%4$s">',
+				(int) $item->id,
+				esc_html($item->filename),
+				esc_html($hint),
+				esc_attr($hint)
+			);
+			return;
+		}
 		if (isset($this->scheduled[(int) $item->id])) {
 			printf(
 				'<label class="screen-reader-text" for="lvmu-cb-%1$d">%2$s</label><input type="checkbox" id="lvmu-cb-%1$d" disabled title="%3$s">',
@@ -210,7 +230,7 @@ class FilesListTable extends \WP_List_Table {
 			}
 		}
 		$del = wp_nonce_url(Page::url(['lvmu_action' => 'delete', 'file' => (int) $item->id]), 'lvmu_delete_' . (int) $item->id);
-		if ($scheduled || Deleter::disabled_reason() !== '') {
+		if ($scheduled || $this->is_protected($item) || Deleter::disabled_reason() !== '') {
 			// No delete action while scheduled, indexing or without a complete index.
 		} elseif ($item->usage_status === 'used') {
 			$actions['delete'] = '<a class="submitdelete lvmu-confirm lvmu-delete--locked" href="' . esc_url($del) . '" data-lvmu-used="1" aria-disabled="true" title="' . esc_attr__("Check 'Also delete files marked as used' to delete this file", 'labelvier-media-usage') . '">' . esc_html__('Delete', 'labelvier-media-usage') . '</a>';
