@@ -80,3 +80,9 @@
 @media (prefers-reduced-motion: reduce) { .lvmu-jobs .lvmu-spin { animation: none; } }
 .lvmu-jobs .lvmu-job__actions { margin-left: auto; }
 .lvmu-jobs .lvmu-details { flex-basis: 100%; }
+
+/* Info box below the floated views list */
+.lvmu-originals-info {
+	clear: both;
+	margin: 12px 0;
+}

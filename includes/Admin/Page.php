@@ -57,8 +57,10 @@ class Page {
 		if ($hook !== self::$hook) {
 			return;
 		}
-		wp_enqueue_style('lvmu-admin', LVMU_URL . 'assets/admin.css', [], LVMU_VERSION);
-		wp_enqueue_script('lvmu-admin', LVMU_URL . 'assets/admin.js', [], LVMU_VERSION, true);
+		// File time in the version so browsers pick up changed assets after an update.
+		$ver = static fn(string $file) => LVMU_VERSION . '.' . (int) filemtime(LVMU_DIR . '/assets/' . $file);
+		wp_enqueue_style('lvmu-admin', LVMU_URL . 'assets/admin.css', [], $ver('admin.css'));
+		wp_enqueue_script('lvmu-admin', LVMU_URL . 'assets/admin.js', [], $ver('admin.js'), true);
 		wp_localize_script('lvmu-admin', 'lvmuAdmin', [
 			'ajaxUrl'  => admin_url('admin-ajax.php'),
 			'nonce'    => wp_create_nonce('lvmu_status'),
@@ -393,6 +395,11 @@ class Page {
 
 		echo '<h2 class="screen-reader-text">' . esc_html__('Files', 'labelvier-media-usage') . '</h2>';
 		$table->views();
+		if (($filters['file_role'] ?? '') === 'original') {
+			echo '<div class="notice notice-info inline lvmu-originals-info"><p><strong>' . esc_html__('About originals', 'labelvier-media-usage') . '</strong></p><p>'
+				. esc_html__('WordPress keeps the full size upload next to the -scaled file it actually serves. An original only counts as used when something links to it directly. Deleting an unused original keeps the Media Library item working: regenerating thumbnails falls back to the -scaled file, the image editor already uses the -scaled file and the frontend never uses the original. You lose the full resolution file itself (for downloads or print) and sizes larger than the -scaled file (default 2560px on the longest side).', 'labelvier-media-usage')
+				. '</p></div>';
+		}
 		self::render_filters($filters, $table);
 
 		echo '<form method="post" id="lvmu-bulk-form" action="' . esc_url(self::url()) . '">';
@@ -588,6 +595,10 @@ class Page {
 		return $text . ' (' . $p['percent'] . '%)';
 	}
 
+	public static function original_tip(): string {
+		return __('Full size upload kept next to the -scaled file. Only used when linked directly; safe to delete in most cases.', 'labelvier-media-usage');
+	}
+
 	private static function card(string $class, string $title, array $stat, array $args, array $sub = []): void {
 		echo '<div class="lvmu-card ' . esc_attr($class) . '">';
 		echo '<h3 class="lvmu-card__title"><a href="' . esc_url(self::url($args)) . '">' . esc_html($title) . '</a></h3>';
@@ -596,7 +607,7 @@ class Page {
 		if ($sub) {
 			echo '<ul class="lvmu-card__sub">';
 			foreach ($sub as $s) {
-				echo '<li><a href="' . esc_url(self::url($s['args'])) . '">' . esc_html($s['label']) . '</a> <span>' . esc_html(number_format_i18n($s['count'])) . ' &middot; ' . esc_html(size_format($s['size'])) . '</span></li>';
+				echo '<li><a href="' . esc_url(self::url($s['args'])) . '"' . (!empty($s['title']) ? ' title="' . esc_attr($s['title']) . '"' : '') . '>' . esc_html($s['label']) . '</a> <span>' . esc_html(number_format_i18n($s['count'])) . ' &middot; ' . esc_html(size_format($s['size'])) . '</span></li>';
 			}
 			echo '</ul>';
 		}
@@ -617,7 +628,7 @@ class Page {
 			$st            = $role($r);
 			$lib['count'] += $st['count'];
 			$lib['size']  += $st['size'];
-			$sub[]         = ['label' => $label, 'args' => ['file_role' => $r], 'count' => $st['count'], 'size' => $st['size']];
+			$sub[]         = ['label' => $label, 'args' => ['file_role' => $r], 'count' => $st['count'], 'size' => $st['size'], 'title' => $r === 'original' ? self::original_tip() : ''];
 		}
 		$unused = $s['by_usage']['unused'] ?? ['count' => 0, 'size' => 0];
 

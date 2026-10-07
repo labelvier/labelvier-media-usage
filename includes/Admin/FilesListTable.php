@@ -212,7 +212,7 @@ class FilesListTable extends \WP_List_Table {
 
 	protected function column_role($item): void {
 		$labels = Page::role_labels();
-		echo '<span class="lvmu-badge lvmu-badge--' . esc_attr($item->file_role) . '">' . esc_html($labels[$item->file_role] ?? $item->file_role) . '</span>';
+		echo '<span class="lvmu-badge lvmu-badge--' . esc_attr($item->file_role) . '"' . ($item->file_role === 'original' ? ' title="' . esc_attr(Page::original_tip()) . '"' : '') . '>' . esc_html($labels[$item->file_role] ?? $item->file_role) . '</span>';
 	}
 
 	protected function column_size($item): void {
