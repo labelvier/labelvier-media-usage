@@ -12,6 +12,21 @@ use LabelvierMediaUsage\Scheduler;
  * Media > Media Usage admin screen: summary, indexing status and file list.
  */
 class Page {
+	/**
+	 * Format a byte size with a minimum unit of MB (1 decimal), switching to GB from 1024 MB.
+	 * Non-zero sizes below 0.05 MB are shown as 0.1 MB.
+	 */
+	public static function format_size_mb(int $bytes): string {
+		$mb = $bytes / MB_IN_BYTES;
+		if ($bytes > 0 && round($mb, 1) < 0.1) {
+			$mb = 0.1;
+		}
+		if (round($mb, 1) >= 1024) {
+			return number_format_i18n($mb / 1024, 1) . ' GB';
+		}
+		return number_format_i18n($mb, 1) . ' MB';
+	}
+
 
 	public const SLUG = 'lvmu';
 	public const CAP  = 'manage_options';

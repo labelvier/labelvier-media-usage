@@ -75,11 +75,13 @@ class FilesListTable extends \WP_List_Table {
 
 	/** "(count)" or "(count, size)" label for a view. */
 	protected static function count_label(int $total, int $bytes): string {
-		if ($bytes <= 0) {
-			return '(' . number_format_i18n($total) . ')';
+		/* translators: %s: number of items */
+		$items = sprintf(_n('%s item', '%s items', $total, 'labelvier-media-usage'), number_format_i18n($total));
+		if ($total <= 0 && $bytes <= 0) {
+			return '(' . $items . ')';
 		}
-		/* translators: 1: number of files, 2: total size (e.g. 0.4 MB) */
-		return sprintf(__('(%1$s, %2$s)', 'labelvier-media-usage'), number_format_i18n($total), size_format($bytes, 1));
+		/* translators: 1: number of items, 2: total size */
+		return sprintf(__('(%1$s, %2$s)', 'labelvier-media-usage'), $items, Page::format_size_mb($bytes));
 	}
 
 	protected function get_views(): array {
