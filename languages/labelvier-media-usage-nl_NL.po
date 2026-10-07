@@ -852,10 +852,6 @@ msgstr "Media-items"
 msgid "The file your site shows, one per item in the Media Library"
 msgstr "Het bestand dat je site toont, één per item in de Mediabibliotheek"
 
-#: includes/Admin/Page.php:714
-msgid "Original upload next to the -scaled file"
-msgstr "Originele upload naast het -scaled bestand"
-
 #: includes/Admin/Page.php:715
 msgid "Thumbnails and other sizes"
 msgstr "Thumbnails en andere maten"
@@ -925,3 +921,7 @@ msgstr "Totaal"
 #: includes/Admin/Page.php:788
 msgid "Not applicable: protected files are never deleted"
 msgstr "Niet van toepassing: beschermde bestanden worden nooit verwijderd"
+
+#: includes/Admin/Page.php:714
+msgid "Original upload next to the -scaled file, not visible in the Media Library"
+msgstr "Originele upload naast het -scaled bestand, niet zichtbaar in de Mediabibliotheek"

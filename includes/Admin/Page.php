@@ -711,7 +711,7 @@ class Page {
 	public static function category_defs(): array {
 		return [
 			'media'     => [__('Media items', 'labelvier-media-usage'), __('The file your site shows, one per item in the Media Library', 'labelvier-media-usage')],
-			'original'  => [__('Originals', 'labelvier-media-usage'), __('Original upload next to the -scaled file', 'labelvier-media-usage')],
+			'original'  => [__('Originals', 'labelvier-media-usage'), __('Original upload next to the -scaled file, not visible in the Media Library', 'labelvier-media-usage')],
 			'subsize'   => [__('Generated sizes', 'labelvier-media-usage'), __('Thumbnails and other sizes', 'labelvier-media-usage')],
 			'webp'      => [__('WebP copies', 'labelvier-media-usage'), __('Copies made by optimizer plugins', 'labelvier-media-usage')],
 			'orphan'    => [__('Loose files', 'labelvier-media-usage'), __('Not linked to the Media Library', 'labelvier-media-usage')],
