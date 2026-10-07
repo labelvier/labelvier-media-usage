@@ -12,6 +12,9 @@ class FileRepository {
 	public const TYPES  = ['image', 'video', 'audio', 'document', 'archive', 'database', 'log', 'code', 'other'];
 	public const USAGES = ['used', 'unused', 'unknown'];
 
+	/** Mutually exclusive categories (protected wins over the role), in display order. */
+	public const CATEGORIES = ['media', 'original', 'subsize', 'webp', 'orphan', 'protected'];
+
 	private const TYPE_MAP = [
 		'image'    => ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg', 'bmp', 'tif', 'tiff', 'ico', 'heic'],
 		'video'    => ['mp4', 'mov', 'webm', 'm4v', 'avi', 'wmv', 'mkv', 'ogv', 'mpg', 'mpeg'],
@@ -254,6 +257,50 @@ class FileRepository {
 		return ['count' => (int) $row->c, 'size' => (int) $row->s, 'suspicious' => (int) $row->x];
 	}
 
+	/** SQL condition for one category: protected wins, so the others exclude protected files. */
+	public static function category_sql(string $category): string {
+		if ($category === 'protected') {
+			return "file_flag = 'protected'";
+		}
+		$role = ['media' => 'main', 'original' => 'original', 'subsize' => 'subsize', 'webp' => 'webp', 'orphan' => 'orphan'][$category] ?? 'orphan';
+		return "(file_role = '{$role}' AND file_flag <> 'protected')";
+	}
+
+	/**
+	 * Count and size per category, split by usage status. Categories add up to the total.
+	 *
+	 * @return array<string, array{total: array{count: int, size: int}, used: array{count: int, size: int}, unused: array{count: int, size: int}}>
+	 */
+	public function category_summary(): array {
+		global $wpdb;
+		$table = Schema::files_table();
+		$empty = ['count' => 0, 'size' => 0];
+		$out   = [];
+		foreach (self::CATEGORIES as $c) {
+			$out[$c] = ['total' => $empty, 'used' => $empty, 'unused' => $empty];
+		}
+		$case = "CASE WHEN file_flag = 'protected' THEN 'protected' WHEN file_role = 'main' THEN 'media' ELSE file_role END";
+		foreach ($wpdb->get_results("SELECT {$case} AS cat, usage_status AS u, COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table} GROUP BY cat, u") as $row) {
+			if (!isset($out[$row->cat])) {
+				continue;
+			}
+			$out[$row->cat]['total']['count'] += (int) $row->c;
+			$out[$row->cat]['total']['size']  += (int) $row->s;
+			if (isset($out[$row->cat][$row->u]) && in_array($row->u, ['used', 'unused'], true)) {
+				$out[$row->cat][$row->u] = ['count' => (int) $row->c, 'size' => (int) $row->s];
+			}
+		}
+		return $out;
+	}
+
+	/** Unused files that can be cleaned up (protected excluded). */
+	public function cleanup_potential(): array {
+		global $wpdb;
+		$table = Schema::files_table();
+		$row   = $wpdb->get_row("SELECT COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table} WHERE usage_status = 'unused' AND file_flag <> 'protected'");
+		return ['count' => (int) $row->c, 'size' => (int) $row->s];
+	}
+
 	private function where(array $args): array {
 		global $wpdb;
 		$where  = [];
@@ -281,6 +328,9 @@ class FileRepository {
 		if (!empty($args['search'])) {
 			$where[]  = 'path LIKE %s';
 			$params[] = '%' . $wpdb->esc_like($args['search']) . '%';
+		}
+		if (!empty($args['category']) && in_array($args['category'], self::CATEGORIES, true)) {
+			$where[] = self::category_sql($args['category']);
 		}
 		if (!empty($args['special']) && in_array($args['special'], ['protected', 'suspicious'], true)) {
 			$where[]  = 'file_flag = %s';

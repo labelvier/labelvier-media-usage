@@ -12,31 +12,21 @@
 .lvmu-bar { height: 10px; background: #dcdcde; border-radius: 5px; overflow: hidden; margin: 6px 0 10px; }
 .lvmu-bar span { display: block; height: 100%; background: #2271b1; transition: width .4s; }
 
-.lvmu-cards { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 16px 0; }
-.lvmu-card__title { margin: 0 0 6px; font-size: 13px; color: #50575e; text-transform: uppercase; letter-spacing: .03em; }
-.lvmu-card__title a { text-decoration: none; color: inherit; }
-.lvmu-card__title a:hover, .lvmu-card__title a:focus { color: #2271b1; text-decoration: underline; }
-.lvmu-card__num { margin: 0; font-size: 26px; font-weight: 600; line-height: 1.2; }
-.lvmu-card__num span { font-size: 12px; font-weight: 400; color: #646970; }
-.lvmu-card__size { margin: 2px 0 0; color: #50575e; font-size: 14px; }
-.lvmu-card__sub { margin: 10px 0 0; padding-top: 8px; border-top: 1px solid #f0f0f1; font-size: 12px; }
-.lvmu-card__sub li { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 3px; }
-.lvmu-card__sub li span { color: #646970; white-space: nowrap; }
-.lvmu-cards .lvmu-card { display: grid; grid-template-columns: minmax(180px, 240px) 1fr; column-gap: 32px; align-items: start; }
-.lvmu-cards .lvmu-card__title, .lvmu-cards .lvmu-card__num, .lvmu-cards .lvmu-card__size { grid-column: 1; }
-.lvmu-card__group { margin: 12px 0 6px; font-size: 11px; color: #646970; text-transform: uppercase; letter-spacing: .03em; }
-.lvmu-card__sub li.is-current a { font-weight: 700; }
-.lvmu-cards .lvmu-card__subs { grid-column: 2; grid-row: 1 / span 3; align-self: center; padding-left: 32px; border-left: 1px solid #f0f0f1; }
-.lvmu-cards .lvmu-card__sub { margin: 0; padding: 0; border: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 24px; }
-.lvmu-cards .lvmu-card__sub li { display: block; margin: 0; }
-.lvmu-cards .lvmu-card__sub li a { display: block; font-weight: 500; }
-.lvmu-cards .lvmu-card__sub li span { display: block; }
-@media (max-width: 1100px) { .lvmu-cards .lvmu-card__sub { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 782px) {
-	.lvmu-cards .lvmu-card { grid-template-columns: 1fr; }
-	.lvmu-cards .lvmu-card__subs { grid-column: 1; grid-row: auto; margin-top: 10px; padding: 8px 0 0; border-left: 0; border-top: 1px solid #f0f0f1; }
-}
-@media (max-width: 480px) { .lvmu-cards .lvmu-card__sub { grid-template-columns: 1fr; } }
+.lvmu-overview { padding: 16px; }
+.lvmu-overview__title { margin: 0 0 4px; padding: 0; font-size: 18px; line-height: 1.4; }
+.lvmu-overview__cleanup { margin: 0 0 12px; color: #50575e; font-size: 14px; }
+.lvmu-overview__warning { margin: 0 0 12px; }
+.lvmu-overview__scroll { overflow-x: auto; }
+.lvmu-overview__table { min-width: 560px; border-collapse: collapse; }
+.lvmu-overview__table th, .lvmu-overview__table td { vertical-align: top; }
+.lvmu-overview__table .lvmu-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.lvmu-overview__cat a { font-weight: 600; }
+.lvmu-overview__hint { display: block; margin-top: 2px; font-weight: 400; font-size: 12px; color: #646970; }
+.lvmu-muted { color: #8c8f94; }
+.lvmu-overview__table tr.is-current > * { background: #f0f6fc; }
+.lvmu-overview__table td.is-current a { font-weight: 700; }
+.lvmu-overview__table td.is-current { box-shadow: inset 0 0 0 2px #2271b1; }
+.lvmu-overview__total > * { border-top: 2px solid #c3c4c7; font-weight: 600; }
 
 .lvmu-types h3 { margin: 0 0 10px; }
 .lvmu-stack { display: flex; height: 22px; border-radius: 4px; overflow: hidden; background: #dcdcde; }
@@ -106,6 +96,3 @@
 .lvmu-badge__reason { opacity: .85; }
 .lvmu-badge--suspicious { background: #fcf9e8; color: #614200; border: 1px solid #dba617; margin-left: 6px; }
 .lvmu-badge--suspicious .dashicons { color: #996800; font-size: 14px; width: 14px; height: 14px; vertical-align: text-bottom; }
-.lvmu-cards .lvmu-card__subs .lvmu-card__group + .lvmu-card__sub { grid-template-columns: 1fr; gap: 6px; }
-.lvmu-cards .lvmu-card__subs .lvmu-card__group + .lvmu-card__sub li { display: flex; justify-content: space-between; gap: 12px; }
-.lvmu-cards .lvmu-card__subs .lvmu-card__group + .lvmu-card__sub li span { display: inline; }

@@ -80,6 +80,17 @@ class Page {
 		$usage_texts = [
 			'used' => [__('About used files', 'labelvier-media-usage'), __('The "Where used" column shows what references the file. Used files are locked and cannot be deleted unless "Also delete files marked as used" is checked.', 'labelvier-media-usage')],
 		];
+		$cat_map = ['media' => 'main', 'original' => 'originals', 'subsize' => 'subsize', 'webp' => 'webp', 'orphan' => 'orphaned', 'protected' => 'protected'];
+		if (!empty($f['category']) && empty($f['search'])) {
+			$k = $cat_map[$f['category']] ?? '';
+			$t = $role_texts[$k] ?? $texts[$k] ?? [];
+			if ($t && ($f['usage_status'] ?? '') === 'unused' && $k === 'orphaned') {
+				return $texts['orphaned_unused'];
+			}
+			if ($t && empty($f['usage_status'])) {
+				return $t;
+			}
+		}
 		$current = self::filter_args($f);
 		if (empty($f['search']) && $current == ['orphaned' => 1, 'usage_status' => 'unused']) {
 			return $texts['orphaned_unused'];
@@ -253,6 +264,10 @@ class Page {
 		if (!empty($src['orphaned'])) {
 			$f['orphaned'] = true;
 		}
+		$cat = isset($src['category']) ? sanitize_key($src['category']) : '';
+		if (in_array($cat, FileRepository::CATEGORIES, true)) {
+			$f['category'] = $cat;
+		}
 		$sp = isset($src['special']) ? sanitize_key($src['special']) : '';
 		if (in_array($sp, ['protected', 'suspicious'], true)) {
 			$f['special'] = $sp;
@@ -275,7 +290,7 @@ class Page {
 	/** Query-string form of filters (for links and hidden inputs). */
 	public static function filter_args(array $f): array {
 		$args = [];
-		foreach (['file_type', 'file_role', 'usage_status', 'special', 'min_size'] as $k) {
+		foreach (['file_type', 'file_role', 'usage_status', 'category', 'special', 'min_size'] as $k) {
 			if (!empty($f[$k])) {
 				$args[$k] = $f[$k];
 			}
@@ -692,74 +707,100 @@ class Page {
 		return __('Full size upload kept next to the -scaled file. Only used when linked directly; safe to delete in most cases.', 'labelvier-media-usage');
 	}
 
-	private static function card(string $class, string $title, array $stat, array $args, array $sub = [], array $more = []): void {
-		echo '<div class="lvmu-card ' . esc_attr($class) . '">';
-		echo '<h3 class="lvmu-card__title"><a href="' . esc_url(self::list_url($args)) . '">' . esc_html($title) . '</a></h3>';
-		echo '<p class="lvmu-card__num">' . esc_html(number_format_i18n($stat['count'])) . ' <span>' . esc_html(_n('file', 'files', (int) $stat['count'], 'labelvier-media-usage')) . '</span></p>';
-		echo '<p class="lvmu-card__size">' . esc_html(size_format($stat['size'])) . '</p>';
-		if ($sub) {
-			echo '<div class="lvmu-card__subs">';
-			foreach ([$sub, $more] as $n => $list) {
-				if (!$list) {
-					continue;
-				}
-				if ($n === 1) {
-					echo '<p class="lvmu-card__group">' . esc_html__('Filters', 'labelvier-media-usage') . '</p>';
-				}
-				echo '<ul class="lvmu-card__sub">';
-				foreach ($list as $s) {
-					$cur = !empty($s['current']);
-					echo '<li' . ($cur ? ' class="is-current"' : '') . '><a href="' . esc_url(self::list_url($s['args'])) . '"' . (!empty($s['title']) ? ' title="' . esc_attr($s['title']) . '"' : '') . ($cur ? ' aria-current="page"' : '') . '>' . esc_html($s['label']) . '</a> <span>' . esc_html(number_format_i18n($s['count'])) . ' &middot; ' . esc_html(size_format($s['size'])) . '</span></li>';
-				}
-				echo '</ul>';
-			}
-			echo '</div>';
+	/** Category definitions: key => [label, hint]. */
+	public static function category_defs(): array {
+		return [
+			'media'     => [__('Media items', 'labelvier-media-usage'), __('The file your site shows, one per item in the Media Library', 'labelvier-media-usage')],
+			'original'  => [__('Originals', 'labelvier-media-usage'), __('Original upload next to the -scaled file', 'labelvier-media-usage')],
+			'subsize'   => [__('Generated sizes', 'labelvier-media-usage'), __('Thumbnails and other sizes', 'labelvier-media-usage')],
+			'webp'      => [__('WebP copies', 'labelvier-media-usage'), __('Copies made by optimizer plugins', 'labelvier-media-usage')],
+			'orphan'    => [__('Loose files', 'labelvier-media-usage'), __('Not linked to the Media Library', 'labelvier-media-usage')],
+			'protected' => [__('Protected', 'labelvier-media-usage'), __('Configuration and plugin data, never deletable', 'labelvier-media-usage')],
+		];
+	}
+
+	private static function stat_text(array $st): string {
+		return number_format_i18n($st['count']) . ' &middot; ' . esc_html(self::format_size_mb($st['size']));
+	}
+
+	/** One table cell: a link (or muted text) with "count · size". */
+	private static function stat_cell(array $st, array $args, bool $current, string $label, bool $link = true, string $tip = ''): string {
+		if ($st['count'] <= 0) {
+			return '<td class="lvmu-num lvmu-muted"><span aria-hidden="true">&mdash;</span><span class="screen-reader-text">' . esc_html__('None', 'labelvier-media-usage') . '</span></td>';
 		}
-		echo '</div>';
+		$text = self::stat_text($st);
+		$cls  = $current ? ' class="lvmu-num is-current"' : ' class="lvmu-num"';
+		if (!$link) {
+			return '<td class="lvmu-num lvmu-muted"' . ($tip ? ' title="' . esc_attr($tip) . '"' : '') . '>' . $text . '</td>';
+		}
+		return '<td' . $cls . '><a href="' . esc_url(self::list_url($args)) . '" aria-label="' . esc_attr($label . ': ' . number_format_i18n($st['count']) . ', ' . self::format_size_mb($st['size'])) . '"' . ($current ? ' aria-current="page"' : '') . '>' . $text . '</a></td>';
 	}
 
 	private static function render_summary(array $s, ?FileRepository $repo = null, array $filters = []): void {
-		$role = static fn(string $r): array => $s['by_role'][$r] ?? ['count' => 0, 'size' => 0];
-		$lib  = ['count' => 0, 'size' => 0];
-		$sub  = [];
-		$role_labels = [
-			'main'     => __('Main files', 'labelvier-media-usage'),
-			'original' => __('Originals', 'labelvier-media-usage'),
-			'subsize'  => __('Generated sizes', 'labelvier-media-usage'),
-			'webp'     => __('WebP copies', 'labelvier-media-usage'),
-		];
-		foreach ($role_labels as $r => $label) {
-			$st            = $role($r);
-			$lib['count'] += $st['count'];
-			$lib['size']  += $st['size'];
-			$sub[]         = ['label' => $label, 'args' => ['file_role' => $r], 'count' => $st['count'], 'size' => $st['size'], 'title' => $r === 'original' ? self::original_tip() : ''];
-		}
-		// Filter views (same as the tabs above the table), minus the ones already shown as role links.
-		$more = [];
-		if ($repo && class_exists(FilesListTable::class)) {
-			$role_args = array_map(static fn($r) => ['file_role' => $r], array_keys($role_labels));
-			foreach (FilesListTable::view_defs() as $def) {
-				[$label, $args] = $def;
-				if (in_array($args, $role_args, true)) {
-					continue;
-				}
-				$q      = $repo->query(array_merge($args, ['per_page' => 1]) + ['orphaned' => !empty($args['orphaned'])]);
-				if (($args['special'] ?? '') === 'suspicious' && !(int) $q['total']) {
-					continue;
-				}
-				$more[] = ['label' => $label, 'args' => $args, 'count' => (int) $q['total'], 'size' => (int) $q['total_size']];
-			}
-		}
+		$repo    = $repo ?? new FileRepository();
+		$cats    = $repo->category_summary();
+		$cleanup = $repo->cleanup_potential();
 		$current = self::filter_args($filters);
-		$mark    = static function (array $items) use ($current): array {
-			foreach ($items as &$i) {
-				$i['current'] = $current == $i['args'] && empty($_GET['s']);
+		$no_s    = empty($_GET['s']);
+		$is_cur  = static fn(array $args): bool => $no_s && $current == $args;
+
+		echo '<div class="lvmu-box lvmu-overview">';
+		echo '<h2 class="lvmu-overview__title">' . esc_html(sprintf(
+			/* translators: 1: number of files, 2: total size */
+			__('Files in uploads: %1$s - %2$s', 'labelvier-media-usage'),
+			sprintf(_n('%s file', '%s files', (int) $s['total']['count'], 'labelvier-media-usage'), number_format_i18n($s['total']['count'])),
+			self::format_size_mb($s['total']['size'])
+		)) . '</h2>';
+		echo '<p class="lvmu-overview__cleanup">' . esc_html(sprintf(
+			/* translators: 1: number of files, 2: total size */
+			__('Of which unused: %1$s - %2$s', 'labelvier-media-usage'),
+			sprintf(_n('%s file', '%s files', (int) $cleanup['count'], 'labelvier-media-usage'), number_format_i18n($cleanup['count'])),
+			self::format_size_mb($cleanup['size'])
+		)) . '</p>';
+
+		$suspicious = $repo->query(['special' => 'suspicious', 'per_page' => 1]);
+		if ((int) $suspicious['total'] > 0) {
+			echo '<div class="notice notice-warning inline lvmu-overview__warning"><p>'
+				. esc_html(sprintf(
+					/* translators: %s: number of files */
+					_n('%s PHP or script file in uploads.', '%s PHP or script files in uploads.', (int) $suspicious['total'], 'labelvier-media-usage'),
+					number_format_i18n((int) $suspicious['total'])
+				))
+				. ' <a href="' . esc_url(self::list_url(['special' => 'suspicious'])) . '">' . esc_html__('Check them.', 'labelvier-media-usage') . '</a></p></div>';
+		}
+
+		echo '<div class="lvmu-overview__scroll"><table class="widefat striped lvmu-overview__table">';
+		echo '<caption class="screen-reader-text">' . esc_html__('Files in uploads per category', 'labelvier-media-usage') . '</caption>';
+		echo '<thead><tr><th scope="col">' . esc_html__('Category', 'labelvier-media-usage') . '</th><th scope="col" class="lvmu-num">' . esc_html__('Total', 'labelvier-media-usage')
+			. '</th><th scope="col" class="lvmu-num">' . esc_html__('Used', 'labelvier-media-usage') . '</th><th scope="col" class="lvmu-num">' . esc_html__('Unused', 'labelvier-media-usage') . '</th></tr></thead><tbody>';
+		foreach (self::category_defs() as $key => [$label, $hint]) {
+			$c        = $cats[$key];
+			$base     = ['category' => $key];
+			$row_cur  = $is_cur($base);
+			$used_cur = $is_cur($base + ['usage_status' => 'used']);
+			$unu_cur  = $is_cur($base + ['usage_status' => 'unused']);
+			$active   = $row_cur || $used_cur || $unu_cur;
+			echo '<tr' . ($active ? ' class="is-current"' : '') . '>';
+			echo '<th scope="row" class="lvmu-overview__cat"><a href="' . esc_url(self::list_url($base)) . '"' . ($row_cur ? ' aria-current="page"' : '') . '>' . esc_html($label) . '</a>';
+			echo '<span class="lvmu-overview__hint">' . esc_html($hint) . '</span></th>';
+			echo self::stat_cell($c['total'], $base, $row_cur, $label . ' - ' . __('Total', 'labelvier-media-usage')); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo self::stat_cell($c['used'], $base + ['usage_status' => 'used'], $used_cur, $label . ' - ' . __('Used', 'labelvier-media-usage')); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo self::stat_cell($c['unused'], $base + ['usage_status' => 'unused'], $unu_cur, $label . ' - ' . __('Unused', 'labelvier-media-usage'), $key !== 'protected', __('Cannot be deleted', 'labelvier-media-usage')); // phpcs:ignore WordPress.Security.EscapeOutput
+			echo '</tr>';
+		}
+		$sum = ['used' => ['count' => 0, 'size' => 0], 'unused' => ['count' => 0, 'size' => 0]];
+		foreach ($cats as $c) {
+			foreach (['used', 'unused'] as $u) {
+				$sum[$u]['count'] += $c[$u]['count'];
+				$sum[$u]['size']  += $c[$u]['size'];
 			}
-			return $items;
-		};
-		echo '<div class="lvmu-cards">';
-		self::card('', __('Files in Media', 'labelvier-media-usage'), $s['total'], [], $mark($sub), $mark($more));
-		echo '</div>';
+		}
+		$all_cur = $is_cur([]);
+		echo '<tr class="lvmu-overview__total' . ($all_cur ? ' is-current' : '') . '"><th scope="row"><a href="' . esc_url(self::list_url()) . '"' . ($all_cur ? ' aria-current="page"' : '') . '>' . esc_html__('Total', 'labelvier-media-usage') . '</a></th>';
+		echo '<td class="lvmu-num">' . self::stat_text($s['total']) . '</td>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<td class="lvmu-num">' . self::stat_text($sum['used']) . '</td>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<td class="lvmu-num">' . self::stat_text($sum['unused']) . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '</tbody></table></div></div>';
 
 		// Size share by type.
 		$types = $s['by_type'];
