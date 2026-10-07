@@ -68,8 +68,9 @@ class FileRepository {
 				$path      = ltrim(wp_normalize_path($row['path']), '/');
 				$filename  = wp_basename($path);
 				$extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+				$flags     = FileRules::flags($path);
 				$values[]  = $wpdb->prepare(
-					'(%s, %s, %s, %s, %s, %d, %d, %s, %d, %s)',
+					'(%s, %s, %s, %s, %s, %d, %d, %s, %d, %s, %s, %s)',
 					$path,
 					md5($path),
 					$filename,
@@ -79,17 +80,37 @@ class FileRepository {
 					(int) $row['mtime'],
 					$row['file_role'] ?? 'orphan',
 					$scan_id,
-					$now
+					$now,
+					$flags['file_flag'],
+					$flags['flag_reason']
 				);
 			}
 			$wpdb->query(
-				"INSERT INTO {$table} (path, path_hash, filename, extension, file_type, size, mtime, file_role, scan_id, indexed_at) VALUES "
+				"INSERT INTO {$table} (path, path_hash, filename, extension, file_type, size, mtime, file_role, scan_id, indexed_at, file_flag, flag_reason) VALUES "
 				. implode(',', $values)
 				. ' ON DUPLICATE KEY UPDATE size = VALUES(size), mtime = VALUES(mtime), file_role = VALUES(file_role),'
 				. " attachment_id = NULL, usage_status = 'unknown', usage_count = 0, usage_sources = NULL,"
-				. ' scan_id = VALUES(scan_id), indexed_at = VALUES(indexed_at)'
+				. ' scan_id = VALUES(scan_id), indexed_at = VALUES(indexed_at),'
+				. ' file_flag = VALUES(file_flag), flag_reason = VALUES(flag_reason)'
 			);
 		}
+	}
+
+	/**
+	 * Recompute file_flag / flag_reason for all rows (after a schema upgrade or rule change).
+	 */
+	public function backfill_flags(): void {
+		global $wpdb;
+		$table = Schema::files_table();
+		$last  = 0;
+		do {
+			$rows = $wpdb->get_results($wpdb->prepare("SELECT id, path FROM {$table} WHERE id > %d ORDER BY id ASC LIMIT 2000", $last));
+			foreach ($rows as $row) {
+				$last  = (int) $row->id;
+				$flags = FileRules::flags((string) $row->path);
+				$wpdb->update($table, $flags, ['id' => $last]);
+			}
+		} while (count($rows) === 2000);
 	}
 
 	/**
@@ -200,11 +221,7 @@ class FileRepository {
 		$scan_id = (int) ScanState::get()['scan_id'];
 		$where[]  = 'scan_id = %d';
 		$params[] = $scan_id;
-		foreach (Deleter::PROTECTED_NAMES as $name) {
-			$where[]  = '(LOWER(path) <> %s AND LOWER(path) NOT LIKE %s)';
-			$params[] = $name;
-			$params[] = '%/' . $wpdb->esc_like($name);
-		}
+		$where[] = "file_flag <> 'protected'";
 		$exclude_ids = array_values(array_unique(array_filter(array_map('intval', $exclude_ids))));
 		if ($exclude_ids) {
 			$where[] = 'id NOT IN (' . implode(',', $exclude_ids) . ')';
@@ -227,14 +244,14 @@ class FileRepository {
 
 	/**
 	 * @param int[] $exclude_ids Ids already scheduled for deletion.
-	 * @return array{count: int, size: int}
+	 * @return array{count: int, size: int, suspicious: int}
 	 */
 	public function deletable_totals(array $args, bool $allow_used, array $exclude_ids = []): array {
 		global $wpdb;
 		$table = Schema::files_table();
 		[$where, $params] = $this->deletable_where($args, $allow_used, $exclude_ids);
-		$row = $wpdb->get_row($wpdb->prepare("SELECT COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table} WHERE " . implode(' AND ', $where), $params));
-		return ['count' => (int) $row->c, 'size' => (int) $row->s];
+		$row = $wpdb->get_row($wpdb->prepare("SELECT COUNT(*) AS c, COALESCE(SUM(size), 0) AS s, COALESCE(SUM(file_flag = 'suspicious'), 0) AS x FROM {$table} WHERE " . implode(' AND ', $where), $params));
+		return ['count' => (int) $row->c, 'size' => (int) $row->s, 'suspicious' => (int) $row->x];
 	}
 
 	private function where(array $args): array {
@@ -264,6 +281,10 @@ class FileRepository {
 		if (!empty($args['search'])) {
 			$where[]  = 'path LIKE %s';
 			$params[] = '%' . $wpdb->esc_like($args['search']) . '%';
+		}
+		if (!empty($args['special']) && in_array($args['special'], ['protected', 'suspicious'], true)) {
+			$where[]  = 'file_flag = %s';
+			$params[] = $args['special'];
 		}
 		if (!empty($args['min_size'])) {
 			$where[]  = 'size >= %d';

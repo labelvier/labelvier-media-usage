@@ -7,7 +7,7 @@ namespace LabelvierMediaUsage;
  */
 class Schema {
 
-	public const DB_VERSION = '1';
+	public const DB_VERSION = '2';
 	public const OPTION = 'lvmu_db_version';
 
 	public static function files_table(): string {
@@ -54,6 +54,8 @@ class Schema {
 			usage_sources text NULL,
 			scan_id int(10) unsigned NOT NULL DEFAULT 0,
 			indexed_at datetime NOT NULL,
+			file_flag varchar(20) NOT NULL DEFAULT '',
+			flag_reason varchar(20) NOT NULL DEFAULT '',
 			PRIMARY KEY  (id),
 			UNIQUE KEY path_hash (path_hash),
 			KEY attachment_id (attachment_id),
@@ -62,6 +64,7 @@ class Schema {
 			KEY usage_status (usage_status),
 			KEY size (size),
 			KEY scan_id (scan_id),
+			KEY file_flag (file_flag),
 			KEY filename (filename(191))
 		) {$charset};");
 
@@ -80,7 +83,12 @@ class Schema {
 			KEY scan_id (scan_id)
 		) {$charset};");
 
+		$previous = get_option(self::OPTION);
 		update_option(self::OPTION, self::DB_VERSION, false);
+		if ($previous !== false && version_compare((string) $previous, '2', '<')) {
+			// Flag columns are new: fill them for rows indexed before the upgrade.
+			(new FileRepository())->backfill_flags();
+		}
 	}
 
 	public static function uninstall(): void {

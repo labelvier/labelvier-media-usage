@@ -34,126 +34,122 @@ msgstr "Label Vier"
 msgid "https://labelvier.nl"
 msgstr "https://labelvier.nl"
 
-#: includes/Admin/FilesListTable.php:37
+#: includes/Admin/FilesListTable.php:38
 msgid "Preview"
 msgstr "Voorbeeld"
 
-#: includes/Admin/FilesListTable.php:38
+#: includes/Admin/FilesListTable.php:39
 msgid "File"
 msgstr "Bestand"
 
-#: includes/Admin/FilesListTable.php:39
-#: includes/Admin/Page.php:783
+#: includes/Admin/FilesListTable.php:40
+#: includes/Admin/Page.php:820
 msgid "Type"
 msgstr "Type"
 
-#: includes/Admin/FilesListTable.php:40
-#: includes/Admin/Page.php:784
+#: includes/Admin/FilesListTable.php:41
+#: includes/Admin/Page.php:821
 msgid "Role"
 msgstr "Rol"
 
-#: includes/Admin/FilesListTable.php:41
+#: includes/Admin/FilesListTable.php:42
 msgid "Size"
 msgstr "Grootte"
 
-#: includes/Admin/FilesListTable.php:42
+#: includes/Admin/FilesListTable.php:43
 msgid "Media item"
 msgstr "Media-item"
 
-#: includes/Admin/FilesListTable.php:43
-#: includes/Admin/Page.php:785
+#: includes/Admin/FilesListTable.php:44
+#: includes/Admin/Page.php:822
 msgid "Usage"
 msgstr "Gebruik"
 
-#: includes/Admin/FilesListTable.php:44
+#: includes/Admin/FilesListTable.php:45
 msgid "Modified"
 msgstr "Gewijzigd"
 
-#: includes/Admin/FilesListTable.php:61
+#: includes/Admin/FilesListTable.php:62
 msgid "Delete permanently"
 msgstr "Definitief verwijderen"
 
-#: includes/Admin/FilesListTable.php:67
+#: includes/Admin/FilesListTable.php:68
 msgid "All"
 msgstr "Alle"
 
-#: includes/Admin/FilesListTable.php:68
-#: includes/Admin/FilesListTable.php:277
-#: includes/Admin/Page.php:787
+#: includes/Admin/FilesListTable.php:69
+#: includes/Admin/FilesListTable.php:304
+#: includes/Admin/Page.php:824
 msgid "Unused"
 msgstr "Ongebruikt"
 
-#: includes/Admin/FilesListTable.php:69
+#: includes/Admin/FilesListTable.php:70
 msgid "Orphaned"
 msgstr "Los"
 
-#: includes/Admin/Page.php:724
-msgid "Orphaned & unused"
-msgstr "Los & ongebruikt"
-
-#: includes/Admin/FilesListTable.php:71
-#: includes/Admin/Page.php:709
+#: includes/Admin/FilesListTable.php:74
+#: includes/Admin/Page.php:729
 msgid "WebP copies"
 msgstr "WebP-kopieën"
 
-#: includes/Admin/FilesListTable.php:124
+#: includes/Admin/FilesListTable.php:130
 msgid "No files found."
 msgstr "Geen bestanden gevonden."
 
-#: includes/Admin/FilesListTable.php:134
+#: includes/Admin/FilesListTable.php:140
 msgid "Also delete files marked as used"
 msgstr "Ook bestanden verwijderen die als gebruikt zijn gemarkeerd"
 
-#: includes/Admin/FilesListTable.php:136
+#: includes/Admin/FilesListTable.php:142
 msgid "Warning: files marked as used are referenced in your content. Deleting them will break images and links."
 msgstr "Let op: bestanden die als gebruikt zijn gemarkeerd, staan in je content. Als je ze verwijdert, werken afbeeldingen en links niet meer."
 
-#: includes/Admin/FilesListTable.php:172
-#: includes/Admin/FilesListTable.php:219
+#: includes/Admin/FilesListTable.php:189
+#: includes/Admin/FilesListTable.php:238
 msgid "Scheduled for deletion"
 msgstr "Ingepland voor verwijdering"
 
-#: includes/Admin/FilesListTable.php:177
+#: includes/Admin/FilesListTable.php:194
 msgid "Check 'Also delete files marked as used' to select this file"
 msgstr "Vink 'Ook bestanden verwijderen die als gebruikt zijn gemarkeerd' aan om dit bestand te selecteren"
 
-#: includes/Admin/FilesListTable.php:224
+#: includes/Admin/FilesListTable.php:251
 msgid "View"
 msgstr "Bekijken"
 
-#: includes/Admin/FilesListTable.php:229
+#: includes/Admin/FilesListTable.php:256
 msgid "Edit attachment"
 msgstr "Bijlage bewerken"
 
-#: includes/Admin/FilesListTable.php:236
+#: includes/Admin/FilesListTable.php:263
 msgid "Check 'Also delete files marked as used' to delete this file"
 msgstr "Vink 'Ook bestanden verwijderen die als gebruikt zijn gemarkeerd' aan om dit bestand te verwijderen"
 
-#: includes/Admin/FilesListTable.php:236
-#: includes/Admin/FilesListTable.php:238
+#: includes/Admin/FilesListTable.php:263
+#: includes/Admin/FilesListTable.php:265
 msgid "Delete"
 msgstr "Verwijderen"
 
-#: includes/Admin/FilesListTable.php:260
+#: includes/Admin/FilesListTable.php:287
 msgid "Not in Media Library"
 msgstr "Niet in de Mediabibliotheek"
 
 #. translators: %d: attachment ID
-#: includes/Admin/FilesListTable.php:266
+#: includes/Admin/FilesListTable.php:293
 msgid "Attachment #%d"
 msgstr "Bijlage #%d"
 
-#: includes/Admin/FilesListTable.php:276
-#: includes/Admin/Page.php:786
+#: includes/Admin/FilesListTable.php:303
+#: includes/Admin/Page.php:823
 msgid "Used"
 msgstr "Gebruikt"
 
-#: includes/Admin/FilesListTable.php:278
-#: includes/Admin/Page.php:788
+#: includes/Admin/FilesListTable.php:305
+#: includes/Admin/Page.php:825
 msgid "Unknown"
 msgstr "Onbekend"
 
-#: includes/Admin/FilesListTable.php:290
+#: includes/Admin/FilesListTable.php:317
 msgid "Where used"
 msgstr "Waar gebruikt"
 
@@ -209,448 +205,432 @@ msgstr "Over losse en ongebruikte bestanden"
 msgid "The safest group to clean up: not in the Media Library and not referenced anywhere. Plugin cache folders (for example elementor/css) are regenerated by their plugin when needed."
 msgstr "De veiligste groep om op te ruimen: niet in de Mediabibliotheek en nergens vermeld. Cachemappen van plugins (zoals elementor/css) maakt de plugin zelf weer aan als dat nodig is."
 
-#: includes/Admin/Page.php:71
+#: includes/Admin/Page.php:73
 msgid "About originals"
 msgstr "Over originelen"
 
-#: includes/Admin/Page.php:71
+#: includes/Admin/Page.php:73
 msgid "WordPress keeps the full size upload next to the -scaled file it actually serves. An original only counts as used when something links to it directly. Deleting an unused original keeps the Media Library item working: regenerating thumbnails falls back to the -scaled file, the image editor already uses the -scaled file and the frontend never uses the original. You lose the full resolution file itself (for downloads or print) and sizes larger than the -scaled file (default 2560px on the longest side)."
 msgstr "WordPress bewaart de originele upload naast het -scaled bestand dat je website echt laat zien. Een origineel telt alleen als gebruikt als er direct naar gelinkt wordt. Verwijder je een ongebruikt origineel, dan blijft het item in de Mediabibliotheek werken. Thumbnails opnieuw genereren gebruikt dan het -scaled bestand, de afbeeldingseditor gebruikt dat al en de website zelf gebruikt het origineel nooit. Je verliest wel het bestand in volle resolutie (voor downloads of drukwerk) en formaten groter dan het -scaled bestand (standaard 2560px aan de lange zijde)."
 
-#: includes/Admin/Page.php:72
+#: includes/Admin/Page.php:74
 msgid "About WebP copies"
 msgstr "Over WebP-kopieën"
 
-#: includes/Admin/Page.php:72
+#: includes/Admin/Page.php:74
 msgid "Copies made by optimizer plugins (SiteGround Optimizer, EWWW and others) as foo.jpg.webp or foo.webp. WordPress does not know about them, so they follow the usage of their source image. Deleting them while the optimizer is active means it serves the original instead or regenerates them."
 msgstr "Kopieën die optimalisatieplugins (SiteGround Optimizer, EWWW en andere) maken als foo.jpg.webp of foo.webp. WordPress kent ze niet, dus ze volgen het gebruik van de afbeelding waar ze van komen. Verwijder je ze terwijl de plugin actief is, dan toont die de originele afbeelding of maakt hij de kopieën opnieuw aan."
 
-#: includes/Admin/Page.php:75
+#: includes/Admin/Page.php:77
 msgid "About main files"
 msgstr "Over hoofdbestanden"
 
-#: includes/Admin/Page.php:75
+#: includes/Admin/Page.php:77
 msgid "The main file is the one WordPress serves, often the -scaled version. Deleting a main file deletes the whole Media Library item, including all its sizes."
 msgstr "Het hoofdbestand is het bestand dat WordPress laat zien, vaak de -scaled versie. Verwijder je een hoofdbestand, dan verdwijnt het hele item uit de Mediabibliotheek, met alle formaten."
 
-#: includes/Admin/Page.php:76
+#: includes/Admin/Page.php:78
 msgid "About generated sizes"
 msgstr "Over gegenereerde formaten"
 
-#: includes/Admin/Page.php:76
+#: includes/Admin/Page.php:78
 msgid "Generated sizes are the thumbnails WordPress creates for an item. They follow the usage of that item."
 msgstr "Gegenereerde formaten zijn de thumbnails die WordPress van een item maakt. Ze volgen het gebruik van dat item."
 
-#: includes/Admin/Page.php:79
+#: includes/Admin/Page.php:81
 msgid "About used files"
 msgstr "Over gebruikte bestanden"
 
-#: includes/Admin/Page.php:79
+#: includes/Admin/Page.php:81
 msgid "The \"Where used\" column shows what references the file. Used files are locked and cannot be deleted unless \"Also delete files marked as used\" is checked."
 msgstr "In de kolom \"Waar gebruikt\" zie je waar het bestand wordt gebruikt. Gebruikte bestanden zijn vergrendeld. Je kunt ze alleen verwijderen als \"Ook bestanden verwijderen die als gebruikt zijn gemarkeerd\" aanstaat."
 
-#: includes/Admin/Page.php:115
-#: includes/Admin/Page.php:116
-#: includes/Admin/Page.php:460
+#: includes/Admin/Page.php:117
+#: includes/Admin/Page.php:118
+#: includes/Admin/Page.php:469
 msgid "Media Usage"
 msgstr "Mediagebruik"
 
 #. translators: %s: total size
-#: includes/Admin/Page.php:140
+#: includes/Admin/Page.php:142
 msgid "Permanently delete 1 file (%s)? This cannot be undone."
 msgstr "1 bestand (%s) definitief verwijderen? Dit kan niet ongedaan worden gemaakt."
 
 #. translators: 1: number of files, 2: total size
-#: includes/Admin/Page.php:142
+#: includes/Admin/Page.php:144
 msgid "Permanently delete %1$s files (%2$s)? This cannot be undone."
 msgstr "%1$s bestanden (%2$s) definitief verwijderen? Dit kan niet ongedaan worden gemaakt."
 
 #. translators: %s: total size
-#: includes/Admin/Page.php:144
+#: includes/Admin/Page.php:146
 msgid "Permanently delete the 1 matching file (%s)? This cannot be undone."
 msgstr "Het ene passende bestand (%s) definitief verwijderen? Dit kan niet ongedaan worden gemaakt."
 
 #. translators: 1: number of files, 2: total size
-#: includes/Admin/Page.php:146
+#: includes/Admin/Page.php:148
 msgid "Permanently delete ALL %1$s matching files (%2$s)? This cannot be undone."
 msgstr "ALLE %1$s passende bestanden (%2$s) definitief verwijderen? Dit kan niet ongedaan worden gemaakt."
 
-#: includes/Admin/Page.php:147
+#: includes/Admin/Page.php:149
 msgid "Files marked as used are included. Deleting them may break your site. Continue?"
 msgstr "Bestanden die als gebruikt zijn gemarkeerd, doen mee. Als je ze verwijdert, kan je site stuk gaan. Doorgaan?"
 
-#: includes/Admin/Page.php:148
+#: includes/Admin/Page.php:153
 msgid "Permanently delete this file? This cannot be undone."
 msgstr "Dit bestand definitief verwijderen? Dit kan niet ongedaan worden gemaakt."
 
-#: includes/Admin/Page.php:149
+#: includes/Admin/Page.php:154
 msgid "Select at least one file first."
 msgstr "Selecteer eerst minimaal één bestand."
 
-#: includes/Admin/Page.php:150
+#: includes/Admin/Page.php:155
 msgid "1 file on this page is selected."
 msgstr "1 bestand op deze pagina is geselecteerd."
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:152
+#: includes/Admin/Page.php:157
 msgid "%s files on this page are selected."
 msgstr "%s bestanden op deze pagina zijn geselecteerd."
 
-#: includes/Admin/Page.php:153
+#: includes/Admin/Page.php:158
 msgid "The 1 matching file is selected."
 msgstr "Het ene passende bestand is geselecteerd."
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:155
+#: includes/Admin/Page.php:160
 msgid "All %s matching files are selected."
 msgstr "Alle %s passende bestanden zijn geselecteerd."
 
-#: includes/Admin/Page.php:156
+#: includes/Admin/Page.php:161
 msgid "Select the 1 matching file"
 msgstr "Selecteer het ene passende bestand"
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:158
+#: includes/Admin/Page.php:163
 msgid "Select all %s matching files"
 msgstr "Selecteer alle %s passende bestanden"
 
-#: includes/Admin/Page.php:159
+#: includes/Admin/Page.php:164
 msgid "Clear selection"
 msgstr "Selectie wissen"
 
-#: includes/Admin/Page.php:160
+#: includes/Admin/Page.php:165
 msgid "Index finished."
 msgstr "Index is klaar."
 
-#: includes/Admin/Page.php:169
+#: includes/Admin/Page.php:174
 msgid "Files per page"
 msgstr "Bestanden per pagina"
 
-#: includes/Admin/Page.php:287
+#: includes/Admin/Page.php:296
 msgid "You are not allowed to do this."
 msgstr "Je mag dit niet doen."
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:361
+#: includes/Admin/Page.php:370
 msgid "File found: %s"
 msgid_plural "Files found: %s"
 msgstr[0] "Bestand gevonden: %s"
 msgstr[1] "Bestanden gevonden: %s"
 
 #. translators: 1: done, 2: total
-#: includes/Admin/Page.php:371
+#: includes/Admin/Page.php:380
 msgid "Linking Media Library items: %1$s of %2$s"
 msgstr "Items in de Mediabibliotheek koppelen: %1$s van %2$s"
 
 #. translators: 1: done, 2: total
-#: includes/Admin/Page.php:381
+#: includes/Admin/Page.php:390
 msgid "Scanning database tables: %1$s of %2$s"
 msgstr "Databasetabellen doorzoeken: %1$s van %2$s"
 
 #. translators: 1: done, 2: total
-#: includes/Admin/Page.php:395
+#: includes/Admin/Page.php:404
 msgid "Checking files: %1$s of %2$s"
 msgstr "Bestanden controleren: %1$s van %2$s"
 
-#: includes/Admin/Page.php:399
-#: includes/Admin/Page.php:401
+#: includes/Admin/Page.php:408
+#: includes/Admin/Page.php:410
 msgid "Checking resized image versions"
 msgstr "Verkleinde versies van afbeeldingen controleren"
 
 #. translators: %s: relative time
-#: includes/Admin/Page.php:425
+#: includes/Admin/Page.php:434
 msgid "Last indexed %s ago"
 msgstr "%s geleden voor het laatst geïndexeerd"
 
-#: includes/Admin/Page.php:427
+#: includes/Admin/Page.php:436
 msgid "Never indexed before"
 msgstr "Nog niet eerder geïndexeerd"
 
-#: includes/Admin/Page.php:427
+#: includes/Admin/Page.php:436
 msgid "Never indexed"
 msgstr "Nog nooit geïndexeerd"
 
-#: includes/Admin/Page.php:429
+#: includes/Admin/Page.php:438
 msgid "Indexing…"
 msgstr "Bezig met indexeren…"
 
-#: includes/Admin/Page.php:452
+#: includes/Admin/Page.php:461
 msgid "You are not allowed to access this page."
 msgstr "Je hebt geen toegang tot deze pagina."
 
-#: includes/Admin/Page.php:477
+#: includes/Admin/Page.php:486
 msgid "Files"
 msgstr "Bestanden"
 
-#: includes/Admin/Page.php:498
+#: includes/Admin/Page.php:507
 msgid "Indexing started. This page updates automatically."
 msgstr "Indexeren is gestart. Deze pagina ververst vanzelf."
 
-#: includes/Admin/Page.php:500
+#: includes/Admin/Page.php:509
 msgid "Could not start indexing (already running or the scheduler is unavailable)."
 msgstr "Indexeren starten lukt niet. Het draait al of de planner is niet beschikbaar."
 
-#: includes/Admin/Page.php:506
+#: includes/Admin/Page.php:515
 msgid "Scheduled deletion cancelled."
 msgstr "De geplande verwijdering is geannuleerd."
 
-#: includes/Admin/Page.php:508
+#: includes/Admin/Page.php:517
 msgid "The scheduled deletion could not be cancelled: it has already started or finished."
 msgstr "Annuleren lukt niet: de geplande verwijdering is al begonnen of klaar."
 
 #. translators: %s: number of files and size, like "12 files, 34 MB"
-#: includes/Admin/Page.php:515
+#: includes/Admin/Page.php:524
 msgid "Deletion of %s scheduled."
 msgstr "Verwijdering van %s is ingepland."
 
-#: includes/Admin/Page.php:517
+#: includes/Admin/Page.php:526
 msgid "Nothing was scheduled: no files selected, already scheduled, or deleting is disabled."
 msgstr "Er is niets ingepland. Er zijn geen bestanden geselecteerd, ze waren al ingepland of verwijderen staat uit."
 
 #. translators: 1: number of files, 2: freed size
-#: includes/Admin/Page.php:533
-#: includes/Admin/Page.php:595
+#: includes/Admin/Page.php:542
+#: includes/Admin/Page.php:604
 msgid "Deleted %1$s file, freed %2$s."
 msgid_plural "Deleted %1$s files, freed %2$s."
 msgstr[0] "%1$s bestand verwijderd, %2$s vrijgemaakt."
 msgstr[1] "%1$s bestanden verwijderd, %2$s vrijgemaakt."
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:537
+#: includes/Admin/Page.php:546
 msgid "%s more file was not processed in this request; repeat the action to continue."
 msgid_plural "%s more files were not processed in this request; repeat the action to continue."
 msgstr[0] "%s bestand is in dit verzoek niet verwerkt. Herhaal de actie om door te gaan."
 msgstr[1] "%s bestanden zijn in dit verzoek niet verwerkt. Herhaal de actie om door te gaan."
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:541
-#: includes/Admin/Page.php:609
+#: includes/Admin/Page.php:550
+#: includes/Admin/Page.php:618
 msgid "Skipped (%s)"
 msgstr "Overgeslagen (%s)"
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:541
-#: includes/Admin/Page.php:609
+#: includes/Admin/Page.php:550
+#: includes/Admin/Page.php:618
 msgid "Errors (%s)"
 msgstr "Fouten (%s)"
 
-#: includes/Admin/Page.php:567
+#: includes/Admin/Page.php:576
 msgid "unknown user"
 msgstr "onbekende gebruiker"
 
 #. translators: 1: number of files, 2: total size
-#: includes/Admin/Page.php:570
+#: includes/Admin/Page.php:579
 msgid "%1$s file (%2$s)"
 msgid_plural "%1$s files (%2$s)"
 msgstr[0] "%1$s bestand (%2$s)"
 msgstr[1] "%1$s bestanden (%2$s)"
 
 #. translators: 1: files and size, 2: relative time, 3: user name
-#: includes/Admin/Page.php:575
+#: includes/Admin/Page.php:584
 msgid "Scheduled: delete %1$s — queued %2$s ago by %3$s"
 msgstr "Ingepland: %1$s verwijderen. %3$s heeft dit %2$s geleden in de wachtrij gezet"
 
-#: includes/Admin/Page.php:581
+#: includes/Admin/Page.php:590
 msgid "Cancel"
 msgstr "Annuleren"
 
 #. translators: 1: files and size, 2: files done, 3: total files
-#: includes/Admin/Page.php:586
+#: includes/Admin/Page.php:595
 msgid "Deleting %1$s: %2$s of %3$s done"
 msgstr "%1$s verwijderen: %2$s van %3$s klaar"
 
-#: includes/Admin/Page.php:597
+#: includes/Admin/Page.php:606
 msgid "Scheduled deletion failed."
 msgstr "De geplande verwijdering is mislukt."
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:601
+#: includes/Admin/Page.php:610
 msgid "Skipped: %s."
 msgstr "Overgeslagen: %s."
 
 #. translators: %s: number of files
-#: includes/Admin/Page.php:605
+#: includes/Admin/Page.php:614
 msgid "Errors: %s."
 msgstr "Fouten: %s."
 
-#: includes/Admin/Page.php:607
+#: includes/Admin/Page.php:616
 msgid "Dismiss"
 msgstr "Sluiten"
 
-#: includes/Admin/Page.php:635
+#: includes/Admin/Page.php:644
 msgid "The uploads folder has never been indexed. Click \"Index now\" to build the file index."
 msgstr "De uploadmap is nog nooit geïndexeerd. Klik op \"Nu indexeren\" om de bestandsindex op te bouwen."
 
-#: includes/Admin/Page.php:638
+#: includes/Admin/Page.php:647
 msgid "The last index run failed."
 msgstr "De laatste indexering is mislukt."
 
-#: includes/Admin/Page.php:650
+#: includes/Admin/Page.php:659
 msgid "Indexing progress"
 msgstr "Voortgang van het indexeren"
 
-#: includes/Admin/Page.php:652
+#: includes/Admin/Page.php:661
 msgid "Indexes automatically every night at 03:00 via Action Scheduler."
 msgstr "Indexeert elke nacht om 03:00 uur automatisch via Action Scheduler."
 
-#: includes/Admin/Page.php:660
+#: includes/Admin/Page.php:669
 msgid "Restart index"
 msgstr "Index opnieuw starten"
 
-#: includes/Admin/Page.php:662
+#: includes/Admin/Page.php:671
 msgid "Index now"
 msgstr "Nu indexeren"
 
 #. translators: 1: step, 2: total steps, 3: phase label
-#: includes/Admin/Page.php:671
+#: includes/Admin/Page.php:680
 msgid "Step %1$d of %2$d: %3$s"
 msgstr "Stap %1$d van %2$d: %3$s"
 
-#: includes/Admin/Page.php:675
+#: includes/Admin/Page.php:684
 msgid "Starting…"
 msgstr "Starten…"
 
-#: includes/Admin/Page.php:683
+#: includes/Admin/Page.php:692
 msgid "Full size upload kept next to the -scaled file. Only used when linked directly; safe to delete in most cases."
 msgstr "De originele upload, bewaard naast het -scaled bestand. Telt alleen als gebruikt bij een directe link. Meestal kun je hem veilig verwijderen."
 
-#: includes/Admin/Page.php:689
+#: includes/Admin/Page.php:698
 msgid "file"
 msgid_plural "files"
 msgstr[0] "bestand"
 msgstr[1] "bestanden"
 
-#: includes/Admin/Page.php:706
+#: includes/Admin/Page.php:726
 msgid "Main files"
 msgstr "Hoofdbestanden"
 
-#: includes/Admin/Page.php:708
+#: includes/Admin/Page.php:728
 msgid "Generated sizes"
 msgstr "Gegenereerde formaten"
 
-#: includes/Admin/Page.php:720
-msgid "Total on disk"
-msgstr "Totaal op schijf"
-
-#: includes/Admin/Page.php:721
-msgid "Media Library files"
-msgstr "Bestanden in de Mediabibliotheek"
-
-#: includes/Admin/Page.php:722
-msgid "Orphaned files"
-msgstr "Losse bestanden"
-
-#: includes/Admin/Page.php:723
-msgid "Unused (all)"
-msgstr "Ongebruikt (alle)"
-
-#: includes/Admin/Page.php:733
+#: includes/Admin/Page.php:770
 msgid "Size by file type"
 msgstr "Grootte per bestandstype"
 
-#: includes/Admin/Page.php:734
+#: includes/Admin/Page.php:771
 msgid "Size share by file type"
 msgstr "Aandeel in grootte per bestandstype"
 
-#: includes/Admin/Page.php:752
+#: includes/Admin/Page.php:789
 msgid "Images"
 msgstr "Afbeeldingen"
 
-#: includes/Admin/Page.php:753
+#: includes/Admin/Page.php:790
 msgid "Video"
 msgstr "Video"
 
-#: includes/Admin/Page.php:754
+#: includes/Admin/Page.php:791
 msgid "Audio"
 msgstr "Audio"
 
-#: includes/Admin/Page.php:755
+#: includes/Admin/Page.php:792
 msgid "Documents"
 msgstr "Documenten"
 
-#: includes/Admin/Page.php:756
+#: includes/Admin/Page.php:793
 msgid "Archives"
 msgstr "Archieven"
 
-#: includes/Admin/Page.php:757
+#: includes/Admin/Page.php:794
 msgid "Databases"
 msgstr "Databases"
 
-#: includes/Admin/Page.php:758
+#: includes/Admin/Page.php:795
 msgid "Logs"
 msgstr "Logbestanden"
 
-#: includes/Admin/Page.php:759
+#: includes/Admin/Page.php:796
 msgid "Code"
 msgstr "Code"
 
-#: includes/Admin/Page.php:760
+#: includes/Admin/Page.php:797
 msgid "Other"
 msgstr "Overig"
 
-#: includes/Admin/Page.php:766
+#: includes/Admin/Page.php:803
 msgid "Main"
 msgstr "Hoofdbestand"
 
-#: includes/Admin/Page.php:767
+#: includes/Admin/Page.php:804
 msgid "Original"
 msgstr "Origineel"
 
-#: includes/Admin/Page.php:768
+#: includes/Admin/Page.php:805
 msgctxt "file role: generated image size"
 msgid "Size"
 msgstr "Formaat"
 
-#: includes/Admin/Page.php:769
+#: includes/Admin/Page.php:806
 msgid "WebP"
 msgstr "WebP"
 
-#: includes/Admin/Page.php:770
+#: includes/Admin/Page.php:807
 msgid "Orphan"
 msgstr "Los bestand"
 
-#: includes/Admin/Page.php:783
+#: includes/Admin/Page.php:820
 msgid "All types"
 msgstr "Alle types"
 
-#: includes/Admin/Page.php:784
+#: includes/Admin/Page.php:821
 msgid "All roles"
 msgstr "Alle rollen"
 
-#: includes/Admin/Page.php:785
+#: includes/Admin/Page.php:822
 msgid "Any usage"
 msgstr "Elk gebruik"
 
 #. translators: %s: size like 1 MB
-#: includes/Admin/Page.php:795
+#: includes/Admin/Page.php:832
 msgid "%s or larger"
 msgstr "%s of groter"
 
-#: includes/Admin/Page.php:798
+#: includes/Admin/Page.php:835
 msgid "Minimum size"
 msgstr "Minimale grootte"
 
-#: includes/Admin/Page.php:798
+#: includes/Admin/Page.php:835
 msgid "Any size"
 msgstr "Elke grootte"
 
-#: includes/Admin/Page.php:800
+#: includes/Admin/Page.php:837
 msgid "Orphaned only"
 msgstr "Alleen losse bestanden"
 
-#: includes/Admin/Page.php:801
+#: includes/Admin/Page.php:838
 msgid "Search path"
 msgstr "Pad zoeken"
 
-#: includes/Admin/Page.php:802
+#: includes/Admin/Page.php:839
 msgid "Search path…"
 msgstr "Pad zoeken…"
 
-#: includes/Admin/Page.php:803
+#: includes/Admin/Page.php:840
 msgid "Filter"
 msgstr "Filteren"
 
-#: includes/Admin/Page.php:805
+#: includes/Admin/Page.php:842
 msgid "Reset"
 msgstr "Herstellen"
 
@@ -665,60 +645,60 @@ msgstr[1] "%1$s bestanden, %2$s"
 msgid "Waiting for index to finish"
 msgstr "Wacht tot het indexeren klaar is"
 
-#: includes/Deleter.php:31
+#: includes/Deleter.php:29
 msgid "Deleting is disabled while indexing."
 msgstr "Verwijderen kan niet zolang er geïndexeerd wordt."
 
-#: includes/Deleter.php:34
+#: includes/Deleter.php:32
 msgid "Deleting is disabled until a complete index has run."
 msgstr "Verwijderen kan pas nadat een volledige index is gemaakt."
 
-#: includes/Deleter.php:69
+#: includes/Deleter.php:67
 msgid "Uploads folder not found."
 msgstr "Uploadmap niet gevonden."
 
-#: includes/Deleter.php:105
+#: includes/Deleter.php:102
 msgid "Protected file."
 msgstr "Beschermd bestand."
 
-#: includes/Deleter.php:109
+#: includes/Deleter.php:106
 msgid "Not part of the latest complete index."
 msgstr "Niet opgenomen in de laatste volledige index."
 
-#: includes/Deleter.php:114
+#: includes/Deleter.php:111
 msgid "File is in use."
 msgstr "Bestand is in gebruik."
 
-#: includes/Deleter.php:118
+#: includes/Deleter.php:115
 msgid "Usage unknown."
 msgstr "Gebruik onbekend."
 
-#: includes/Deleter.php:124
+#: includes/Deleter.php:121
 msgid "Used since last index."
 msgstr "Gebruikt sinds de laatste index."
 
-#: includes/Deleter.php:135
+#: includes/Deleter.php:132
 msgid "File no longer exists on disk, index entry removed."
 msgstr "Het bestand staat niet meer op de schijf. De regel is uit de index gehaald."
 
-#: includes/Deleter.php:141
+#: includes/Deleter.php:138
 msgid "Outside the uploads folder or not a regular file."
 msgstr "Staat buiten de uploadmap of is geen gewoon bestand."
 
-#: includes/Deleter.php:185
+#: includes/Deleter.php:182
 msgid "File is the main file of an attachment."
 msgstr "Dit is het hoofdbestand van een bijlage."
 
-#: includes/Deleter.php:189
+#: includes/Deleter.php:186
 msgid "Could not delete the file (permissions?)."
 msgstr "Het bestand verwijderen lukt niet. Misschien ontbreken er rechten?"
 
 #. translators: %s: shared file path
-#: includes/Deleter.php:214
+#: includes/Deleter.php:211
 msgid "File is shared with another attachment (%s)."
 msgstr "Het bestand wordt ook gebruikt door een andere bijlage (%s)."
 
-#: includes/Deleter.php:222
+#: includes/Deleter.php:219
 msgid "WordPress could not delete the attachment."
 msgstr "WordPress kon de bijlage niet verwijderen."
 
@@ -791,22 +771,88 @@ msgid "Resolving usage failed: "
 msgstr "Gebruik bepalen mislukte: "
 
 #. translators: %s: number of items
-#: includes/Admin/FilesListTable.php:78
+#: includes/Admin/FilesListTable.php:81
 msgid "%s item"
 msgid_plural "%s items"
 msgstr[0] "%s item"
 msgstr[1] "%s items"
 
-#: includes/Admin/FilesListTable.php:70
-#: includes/Admin/Page.php:707
+#: includes/Admin/FilesListTable.php:73
+#: includes/Admin/Page.php:727
 msgid "Originals"
 msgstr "Originelen"
 
 #. translators: 1: number of items, 2: total size
-#: includes/Admin/FilesListTable.php:83
+#: includes/Admin/FilesListTable.php:86
 msgid "(%1$s - %2$s)"
 msgstr "(%1$s - %2$s)"
 
-#: includes/Admin/FilesListTable.php:157
-msgid "This file protects a folder and is never deleted."
-msgstr "Dit bestand beschermt een map en wordt nooit verwijderd."
+#: includes/Admin/Page.php:707
+msgid "Filters"
+msgstr "Filters"
+
+#: includes/Admin/FilesListTable.php:71
+#: includes/Admin/FilesListTable.php:243
+msgid "Protected"
+msgstr "Beschermd"
+
+#: includes/Admin/FilesListTable.php:72
+msgid "To check"
+msgstr "Te controleren"
+
+#: includes/Admin/FilesListTable.php:174
+msgid "This file is protected and is never deleted."
+msgstr "Dit bestand is beschermd en wordt nooit verwijderd."
+
+#: includes/Admin/FilesListTable.php:245
+msgid "PHP or script file in uploads. This can be a sign of a hacked site. Deleting it can also break something that relies on it."
+msgstr "PHP- of scriptbestand in uploads. Dit kan een teken zijn van een gehackte site. Verwijderen kan ook iets breken dat ervan afhangt."
+
+#: includes/Admin/FilesListTable.php:246
+msgid "Check this file"
+msgstr "Controleer dit bestand"
+
+#: includes/Admin/Page.php:71
+msgid "About protected files"
+msgstr "Over beschermde bestanden"
+
+#: includes/Admin/Page.php:71
+msgid "Server configuration, hidden files, folder protection (index files) and files in folders outside the year/month structure of WordPress. Files in those folders belong to plugins. Clean them up through the plugin itself. They are listed with their size but can never be selected or deleted here."
+msgstr "Serverconfiguratie, verborgen bestanden, mapbeveiliging (index-bestanden) en bestanden in mappen buiten de jaar/maand-structuur van WordPress. Bestanden in die mappen horen bij plugins. Ruim ze op via de plugin zelf. Ze staan hier met hun grootte, maar je kunt ze hier niet selecteren of verwijderen."
+
+#: includes/Admin/Page.php:72
+msgid "About files to check"
+msgstr "Over te controleren bestanden"
+
+#: includes/Admin/Page.php:72
+msgid "PHP and script files do not belong in uploads. That can be a sign of a hacked site. Check where they come from before you delete them: deleting can also break something that relies on them."
+msgstr "PHP- en scriptbestanden horen niet in uploads. Dat kan een teken zijn van een gehackte site. Controleer waar ze vandaan komen voordat je ze verwijdert: verwijderen kan ook iets breken dat ervan afhangt."
+
+#. translators: %s: number of files
+#: includes/Admin/Page.php:151
+msgid "%s of the selected files are PHP or script files. Deleting them can break something on the site. Continue?"
+msgstr "%s van de geselecteerde bestanden zijn PHP- of scriptbestanden. Verwijderen kan iets op de site breken. Doorgaan?"
+
+#: includes/Admin/Page.php:152
+msgid "1 of the selected files is a PHP or script file. Deleting it can break something on the site. Continue?"
+msgstr "1 van de geselecteerde bestanden is een PHP- of scriptbestand. Verwijderen kan iets op de site breken. Doorgaan?"
+
+#: includes/FileRules.php:110
+msgid "Server configuration"
+msgstr "Serverconfiguratie"
+
+#: includes/FileRules.php:112
+msgid "Folder protection"
+msgstr "Mapbeveiliging"
+
+#: includes/FileRules.php:114
+msgid "Hidden file"
+msgstr "Verborgen bestand"
+
+#: includes/FileRules.php:116
+msgid "Plugin data"
+msgstr "Plugindata"
+
+#: includes/Admin/Page.php:761
+msgid "Files in Media"
+msgstr "Bestanden in Media"

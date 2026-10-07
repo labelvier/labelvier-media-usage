@@ -49,6 +49,28 @@ as usage.
 Not detected: references in plugin code, external sites or newsletters. Check before
 deleting files that might be linked from outside the site.
 
+## Protected and suspicious files
+
+Some files can never be deleted, not even with "Also delete files marked as used". They
+stay in the list with their size and a "Protected" badge, but cannot be selected:
+
+- Server configuration: `.htaccess`, `.htpasswd`, `.user.ini`, `php.ini`, `web.config`
+  and files with the extension `ini`, `conf` or `config`.
+- Folder protection: `index.php`, `index.html`, `index.htm`.
+- Hidden files: every file whose name starts with a dot (such as `.DS_Store`).
+- Plugin data: every file in a folder outside the WordPress `YYYY/MM` structure (for
+  example `wc-logs/`, `gravity_forms/`, `elementor/css/`, `some-plugin-cache/`). These
+  files belong to plugins, clean them up through the plugin itself. Files directly in the
+  uploads root follow the normal rules.
+
+PHP and script files (`php`, `php3`-`php8`, `phtml`, `phar`, `cgi`, `pl`, `py`, `sh`) are
+not protected but flagged "Check this file": in uploads they can be a sign of a hacked
+site. They can be deleted under the normal rules, after an extra warning in the confirm
+dialog. The views "Protected" and "To check" list both groups.
+
+Sites can extend the rules in code with the `lvmu_protected_patterns` filter (keys
+`names`, `extensions` and `folders`). The rules live in `includes/FileRules.php`.
+
 ## WP-CLI
 
 ```bash
@@ -71,3 +93,18 @@ moved to `npm run build:theme` (used by the deploy scripts).
 Test data:
 `bin/seed-media-usage.sh` in the repository root, expected results in
 `test/fixtures/EXPECTED.md`.
+
+## Translations
+
+All UI text must be translatable (text domain `labelvier-media-usage`) and fully
+translated to Dutch (nl_NL). The source language is English.
+
+1. After changing strings, run `npm run i18n`. It regenerates the `.pot`, merges it
+   into the `.po` and rebuilds the `.mo` and `.l10n.php` (needs the Docker container).
+2. Fill in the empty Dutch `msgstr` entries in `languages/labelvier-media-usage-nl_NL.po`
+   in Label Vier tone (je/jij), and remove any `fuzzy` flags. Run `npm run i18n` again to rebuild the `.mo`.
+3. Run `npm run i18n:check`. It fails on new msgids missing from the `.po`, empty or
+   fuzzy translations and a `.mo` older than the `.po`.
+
+`npm run build` refuses to build when translations are incomplete
+(override with `SKIP_I18N_CHECK=1`).

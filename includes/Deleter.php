@@ -10,8 +10,6 @@ class Deleter {
 	/** Maximum number of files handled in a single request. */
 	public const MAX_PER_REQUEST = 500;
 
-	public const PROTECTED_NAMES = ['index.php', 'index.html', 'index.htm', '.user.ini', 'web.config', '.htaccess'];
-
 	private FileRepository $repo;
 
 	/** scan_id of the completed index run the deletion is based on. */
@@ -100,8 +98,7 @@ class Deleter {
 	}
 
 	private function delete_one(object $row, string $base, bool $allow_used, array &$result, array &$gone): void {
-		$name = strtolower(wp_basename($row->path));
-		if (in_array($name, self::PROTECTED_NAMES, true)) {
+		if (FileRules::protected((string) $row->path) !== null) {
 			$this->skip($result, $row, __('Protected file.', 'labelvier-media-usage'));
 			return;
 		}

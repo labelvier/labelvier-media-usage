@@ -5,6 +5,7 @@ namespace LabelvierMediaUsage\Admin;
 use LabelvierMediaUsage\DeleteQueue;
 use LabelvierMediaUsage\Deleter;
 use LabelvierMediaUsage\FileRepository;
+use LabelvierMediaUsage\FileRules;
 
 if (!class_exists('WP_List_Table')) {
 	require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
@@ -67,6 +68,8 @@ class FilesListTable extends \WP_List_Table {
 			'all'             => [__('All', 'labelvier-media-usage'), []],
 			'unused'          => [__('Unused', 'labelvier-media-usage'), ['usage_status' => 'unused']],
 			'orphaned'        => [__('Orphaned', 'labelvier-media-usage'), ['orphaned' => 1]],
+			'protected'       => [__('Protected', 'labelvier-media-usage'), ['special' => 'protected']],
+			'suspicious'      => [__('To check', 'labelvier-media-usage'), ['special' => 'suspicious']],
 			'originals'       => [__('Originals', 'labelvier-media-usage'), ['file_role' => 'original']],
 			'webp'            => [__('WebP copies', 'labelvier-media-usage'), ['file_role' => 'webp']],
 		];
@@ -89,6 +92,9 @@ class FilesListTable extends \WP_List_Table {
 		$views   = [];
 		foreach ($defs as $key => [$label, $args]) {
 			$q     = $this->repo->query(array_merge($args, ['per_page' => 1]) + ['orphaned' => !empty($args['orphaned'])]);
+			if ($key === 'suspicious' && !(int) $q['total'] && $current != $args) {
+				continue; // Only show this view when there is something to check.
+			}
 			$class = ($current == $args && empty($_GET['s'])) ? ' class="current" aria-current="page"' : '';
 			$views[$key] = '<a href="' . esc_url(Page::list_url($args)) . '"' . $class . '>' . esc_html($label)
 				. ' <span class="count">' . esc_html(self::count_label((int) $q['total'], (int) $q['total_size'])) . '</span></a>';
@@ -145,16 +151,27 @@ class FilesListTable extends \WP_List_Table {
 			. ' data-total-used="' . esc_attr((string) $used['count']) . '"'
 			. ' data-total-used-h="' . esc_attr(number_format_i18n($used['count'])) . '"'
 			. ' data-size-used="' . esc_attr((string) $used['size']) . '"'
-			. ' data-size-used-h="' . esc_attr(size_format($used['size'])) . '"></div>';
+			. ' data-size-used-h="' . esc_attr(size_format($used['size'])) . '"'
+			. ' data-suspicious="' . esc_attr((string) $base['suspicious']) . '"'
+			. ' data-suspicious-used="' . esc_attr((string) $used['suspicious']) . '"></div>';
+	}
+
+	/** Reason key when the file can never be deleted, otherwise null. */
+	private function protected_reason(object $item): ?string {
+		return FileRules::protected((string) $item->path);
 	}
 
 	private function is_protected(object $item): bool {
-		return in_array(strtolower((string) $item->filename), array_map('strtolower', Deleter::PROTECTED_NAMES), true);
+		return $this->protected_reason($item) !== null;
+	}
+
+	private function is_suspicious(object $item): bool {
+		return FileRules::suspicious((string) $item->path);
 	}
 
 	protected function column_cb($item): void {
 		if ($this->is_protected($item)) {
-			$hint = __('This file protects a folder and is never deleted.', 'labelvier-media-usage');
+			$hint = __('This file is protected and is never deleted.', 'labelvier-media-usage');
 			printf(
 				'<label class="screen-reader-text" for="lvmu-cb-%1$d">%2$s <span class="lvmu-protected-hint">(%3$s)</span></label><input type="checkbox" id="lvmu-cb-%1$d" data-lvmu-protected="1" disabled title="%4$s">',
 				(int) $item->id,
@@ -176,20 +193,22 @@ class FilesListTable extends \WP_List_Table {
 		if ($item->usage_status === 'used') {
 			$hint = __("Check 'Also delete files marked as used' to select this file", 'labelvier-media-usage');
 			printf(
-				'<label class="screen-reader-text" for="lvmu-cb-%1$d">%3$s <span class="lvmu-used-hint">(%4$s)</span></label><input type="checkbox" id="lvmu-cb-%1$d" name="file[]" value="%1$d" data-size="%2$d" data-lvmu-used="1" disabled title="%5$s">',
+				'<label class="screen-reader-text" for="lvmu-cb-%1$d">%3$s <span class="lvmu-used-hint">(%4$s)</span></label><input type="checkbox" id="lvmu-cb-%1$d" name="file[]" value="%1$d" data-size="%2$d" data-lvmu-used="1"%6$s disabled title="%5$s">',
 				(int) $item->id,
 				(int) $item->size,
 				esc_html($item->filename),
 				esc_html($hint),
-				esc_attr($hint)
+				esc_attr($hint),
+				$this->is_suspicious($item) ? ' data-lvmu-suspicious="1"' : ''
 			);
 			return;
 		}
 		printf(
-			'<label class="screen-reader-text" for="lvmu-cb-%1$d">%3$s</label><input type="checkbox" id="lvmu-cb-%1$d" name="file[]" value="%1$d" data-size="%2$d">',
+			'<label class="screen-reader-text" for="lvmu-cb-%1$d">%3$s</label><input type="checkbox" id="lvmu-cb-%1$d" name="file[]" value="%1$d" data-size="%2$d"%4$s>',
 			(int) $item->id,
 			(int) $item->size,
-			esc_html($item->filename)
+			esc_html($item->filename),
+			$this->is_suspicious($item) ? ' data-lvmu-suspicious="1"' : ''
 		);
 	}
 
@@ -218,6 +237,14 @@ class FilesListTable extends \WP_List_Table {
 		if ($scheduled) {
 			echo ' <span class="lvmu-badge lvmu-badge--scheduled">' . esc_html__('Scheduled for deletion', 'labelvier-media-usage') . '</span>';
 		}
+		$reason = $this->protected_reason($item);
+		if ($reason !== null) {
+			$label = FileRules::reason_label($reason);
+			echo ' <span class="lvmu-badge lvmu-badge--protected" title="' . esc_attr($label) . '">' . esc_html__('Protected', 'labelvier-media-usage') . ' <span class="lvmu-badge__reason">(' . esc_html($label) . ')</span></span>';
+		} elseif ($this->is_suspicious($item)) {
+			$tip = __('PHP or script file in uploads. This can be a sign of a hacked site. Deleting it can also break something that relies on it.', 'labelvier-media-usage');
+			echo ' <span class="lvmu-badge lvmu-badge--suspicious" title="' . esc_attr($tip) . '"><span class="dashicons dashicons-warning" aria-hidden="true"></span> ' . esc_html__('Check this file', 'labelvier-media-usage') . '<span class="screen-reader-text"> ' . esc_html($tip) . '</span></span>';
+		}
 		echo '<br><span class="lvmu-path">' . esc_html($dir === '.' ? '/' : $dir . '/') . '</span>';
 
 		$actions = [
@@ -233,9 +260,9 @@ class FilesListTable extends \WP_List_Table {
 		if ($scheduled || $this->is_protected($item) || Deleter::disabled_reason() !== '') {
 			// No delete action while scheduled, indexing or without a complete index.
 		} elseif ($item->usage_status === 'used') {
-			$actions['delete'] = '<a class="submitdelete lvmu-confirm lvmu-delete--locked" href="' . esc_url($del) . '" data-lvmu-used="1" aria-disabled="true" title="' . esc_attr__("Check 'Also delete files marked as used' to delete this file", 'labelvier-media-usage') . '">' . esc_html__('Delete', 'labelvier-media-usage') . '</a>';
+			$actions['delete'] = '<a class="submitdelete lvmu-confirm lvmu-delete--locked" href="' . esc_url($del) . '" data-lvmu-used="1"' . ($this->is_suspicious($item) ? ' data-lvmu-suspicious="1"' : '') . ' aria-disabled="true" title="' . esc_attr__("Check 'Also delete files marked as used' to delete this file", 'labelvier-media-usage') . '">' . esc_html__('Delete', 'labelvier-media-usage') . '</a>';
 		} else {
-			$actions['delete'] = '<a class="submitdelete lvmu-confirm" href="' . esc_url($del) . '">' . esc_html__('Delete', 'labelvier-media-usage') . '</a>';
+			$actions['delete'] = '<a class="submitdelete lvmu-confirm" href="' . esc_url($del) . '"' . ($this->is_suspicious($item) ? ' data-lvmu-suspicious="1"' : '') . '>' . esc_html__('Delete', 'labelvier-media-usage') . '</a>';
 		}
 		echo $this->row_actions($actions); // phpcs:ignore WordPress.Security.EscapeOutput
 	}
