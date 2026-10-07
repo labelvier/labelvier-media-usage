@@ -13,10 +13,12 @@ use LabelvierMediaUsage\Schema;
  * Steps:
  * 1. direct:      reset every file to unused; orphans are used when a path ref equals
  *                 their path or a name ref equals their lowercased filename.
+ *                 Originals (pre -scaled `original_image`) are resolved here too: they are
+ *                 only used when referenced directly, WordPress serves the -scaled file.
  * 2. attachments: an attachment is used when any of its files matches a path/name ref
- *                 or an id ref equals its id. Then ALL its files are used (srcset may
- *                 serve any subsize / webp). Refs from the attachment's own post /
- *                 postmeta never count (self references).
+ *                 or an id ref equals its id. Then all its files except the original
+ *                 are used (srcset may serve any subsize / webp). Refs from the
+ *                 attachment's own post / postmeta never count (self references).
  * 3. webp:        an unused orphan .webp/.avif whose source image (foo.jpg.webp or
  *                 foo.webp next to foo.jpg/png/gif) is used becomes used.
  *
@@ -30,11 +32,16 @@ class UsageResolver implements PhaseInterface {
 	private const FILE_BATCH  = 2000;
 	private const ATT_BATCH   = 500;
 	private const MAX_SOURCES = 10;
+	private const QUERY_TIMEOUT = 120;
 
 	public function start(int $scan_id): void {
 		global $wpdb;
 		$files = Schema::files_table();
 		$total = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$files} WHERE scan_id = %d", $scan_id));
+
+		// Both tables were just filled; stale statistics make the optimizer drive the
+		// joins from lvmu_refs, which turns a sub-second query into a full scan per ref.
+		$wpdb->query('ANALYZE TABLE ' . $files . ', ' . Schema::refs_table());
 
 		update_option(self::OPTION, ['scan_id' => $scan_id, 'step' => 'direct', 'cursor' => 0, 'done' => 0, 'total' => $total], false);
 		ScanState::progress(['resolve_step' => 'direct', 'resolve_done' => 0, 'resolve_total' => $total]);
@@ -103,17 +110,17 @@ class UsageResolver implements PhaseInterface {
 			$hi
 		));
 
-		$range = $wpdb->prepare('f.scan_id = %d AND f.id > %d AND f.id <= %d AND f.attachment_id IS NULL', $scan_id, $lo, $hi);
+		$range = $wpdb->prepare("f.scan_id = %d AND f.id > %d AND f.id <= %d AND (f.attachment_id IS NULL OR f.file_role = 'original')", $scan_id, $lo, $hi);
 		$rs    = (int) $scan_id;
 		$src   = self::src_sql();
-		$rows  = $wpdb->get_results(
+		$rows  = self::select(
 			"SELECT x.k, COUNT(DISTINCT x.src) AS c, GROUP_CONCAT(DISTINCT x.src ORDER BY x.src SEPARATOR '\\n') AS s FROM (
 				SELECT f.id AS k, {$src} AS src FROM {$files} f
-				INNER JOIN {$refs} r ON r.ref_hash = MD5(CONCAT('path:', f.path)) AND r.ref_type = 'path' AND r.scan_id = {$rs}
+				STRAIGHT_JOIN {$refs} r ON r.ref_hash = MD5(CONCAT('path:', f.path)) AND r.ref_type = 'path' AND r.scan_id = {$rs}
 				WHERE {$range}
 				UNION ALL
 				SELECT f.id AS k, {$src} AS src FROM {$files} f
-				INNER JOIN {$refs} r ON r.ref_hash = MD5(CONCAT('name:', LOWER(f.filename))) AND r.ref_type = 'name' AND r.scan_id = {$rs}
+				STRAIGHT_JOIN {$refs} r ON r.ref_hash = MD5(CONCAT('name:', LOWER(f.filename))) AND r.ref_type = 'name' AND r.scan_id = {$rs}
 				WHERE {$range}
 			) x GROUP BY x.k"
 		);
@@ -166,14 +173,14 @@ class UsageResolver implements PhaseInterface {
 		$self   = "NOT (r.source_type IN ('post','postmeta') AND r.source_id = CAST(f.attachment_id AS CHAR))";
 		$range  = "f.scan_id = {$rs} AND f.attachment_id IN ({$in})";
 
-		$rows = $wpdb->get_results(
+		$rows = self::select(
 			"SELECT x.k, COUNT(DISTINCT x.src) AS c, GROUP_CONCAT(DISTINCT x.src ORDER BY x.src SEPARATOR '\\n') AS s FROM (
 				SELECT f.attachment_id AS k, {$src} AS src FROM {$files} f
-				INNER JOIN {$refs} r ON r.ref_hash = MD5(CONCAT('path:', f.path)) AND r.ref_type = 'path' AND r.scan_id = {$rs}
+				STRAIGHT_JOIN {$refs} r ON r.ref_hash = MD5(CONCAT('path:', f.path)) AND r.ref_type = 'path' AND r.scan_id = {$rs}
 				WHERE {$range} AND {$self}
 				UNION ALL
 				SELECT f.attachment_id AS k, {$src} AS src FROM {$files} f
-				INNER JOIN {$refs} r ON r.ref_hash = MD5(CONCAT('name:', LOWER(f.filename))) AND r.ref_type = 'name' AND r.scan_id = {$rs}
+				STRAIGHT_JOIN {$refs} r ON r.ref_hash = MD5(CONCAT('name:', LOWER(f.filename))) AND r.ref_type = 'name' AND r.scan_id = {$rs}
 				WHERE {$range} AND {$self}
 				UNION ALL
 				SELECT {$id_key} AS k, {$src} AS src FROM {$refs} r
@@ -181,7 +188,7 @@ class UsageResolver implements PhaseInterface {
 				AND NOT (r.source_type IN ('post','postmeta') AND r.source_id = r.ref_value)
 			) x GROUP BY x.k"
 		);
-		$this->apply('attachment_id', $rows ?: [], $scan_id);
+		$this->apply('attachment_id', $rows ?: [], $scan_id, "file_role <> 'original'");
 
 		$state['cursor'] = end($aids);
 		$state['done']  += (int) $wpdb->get_var("SELECT COUNT(*) FROM {$files} f WHERE {$range}");
@@ -216,7 +223,7 @@ class UsageResolver implements PhaseInterface {
 	 *
 	 * @param array<int, object{k: string, c: string, s: string|null}> $rows
 	 */
-	private function apply(string $column, array $rows, int $scan_id): void {
+	private function apply(string $column, array $rows, int $scan_id, string $extra_where = ''): void {
 		global $wpdb;
 		if (!$rows) {
 			return;
@@ -236,7 +243,26 @@ class UsageResolver implements PhaseInterface {
 			usage_count = CASE {$column} " . implode(' ', $counts) . " END,
 			usage_sources = CASE {$column} " . implode(' ', $sources) . " END
 			WHERE scan_id = " . (int) $scan_id . " AND {$column} IN (" . implode(',', $keys) . ')'
+			. ($extra_where ? " AND {$extra_where}" : '')
 		);
+	}
+
+	/**
+	 * Run a resolve SELECT with a server side time limit. A query that fails or times out
+	 * throws, so the scan fails instead of hanging or marking files unused.
+	 */
+	private static function select(string $sql): array {
+		global $wpdb;
+		if (stripos((string) $wpdb->db_server_info(), 'mariadb') !== false) {
+			$sql = 'SET STATEMENT max_statement_time = ' . self::QUERY_TIMEOUT . ' FOR ' . $sql;
+		} else {
+			$sql = preg_replace('/^\s*SELECT\b/i', 'SELECT /*+ MAX_EXECUTION_TIME(' . (self::QUERY_TIMEOUT * 1000) . ') */', $sql, 1);
+		}
+		$rows = $wpdb->get_results($sql);
+		if ($wpdb->last_error) {
+			throw new \RuntimeException('Resolving usage failed: ' . $wpdb->last_error);
+		}
+		return $rows ?: [];
 	}
 
 	/**

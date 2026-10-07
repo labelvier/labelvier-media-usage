@@ -32,7 +32,11 @@ A file is used when its path or filename is referenced anywhere in the database 
 tables with the WordPress prefix), or when its Media Library item is referenced by id
 (blocks, `wp-image-123`, galleries, featured image, ACF image/file/gallery fields,
 site icon/logo, media-ish option and meta keys). All files of a used Media Library item
-count as used. Revisions, trashed posts and "uploaded to" do not count as usage.
+count as used, except the original: WordPress serves the `-scaled` file, so an original
+is only used when it is referenced directly. Deleting an unused original keeps the
+Media Library item working; you lose the full size upload (used for regenerating
+thumbnails at a larger size and in the image editor). Revisions, trashed posts and
+"uploaded to" do not count as usage.
 
 Not detected: references in plugin code, external sites or newsletters. Check before
 deleting files that might be linked from outside the site.
