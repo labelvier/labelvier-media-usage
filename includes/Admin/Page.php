@@ -714,14 +714,8 @@ class Page {
 			$lib['size']  += $st['size'];
 			$sub[]         = ['label' => $label, 'args' => ['file_role' => $r], 'count' => $st['count'], 'size' => $st['size'], 'title' => $r === 'original' ? self::original_tip() : ''];
 		}
-		$unused = $s['by_usage']['unused'] ?? ['count' => 0, 'size' => 0];
-
 		echo '<div class="lvmu-cards">';
-		self::card('lvmu-card--total', __('Total on disk', 'labelvier-media-usage'), $s['total'], []);
 		self::card('', __('Media Library files', 'labelvier-media-usage'), $lib, ['file_role' => 'main'], $sub);
-		self::card('', __('Orphaned files', 'labelvier-media-usage'), $role('orphan'), ['orphaned' => 1]);
-		self::card('', __('Unused (all)', 'labelvier-media-usage'), $unused, ['usage_status' => 'unused']);
-		self::card('lvmu-card--reclaim', __('Orphaned & unused', 'labelvier-media-usage'), $s['orphaned_unused'], ['orphaned' => 1, 'usage_status' => 'unused']);
 		echo '</div>';
 
 		// Size share by type.

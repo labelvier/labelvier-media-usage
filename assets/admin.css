@@ -12,7 +12,7 @@
 .lvmu-bar { height: 10px; background: #dcdcde; border-radius: 5px; overflow: hidden; margin: 6px 0 10px; }
 .lvmu-bar span { display: block; height: 100%; background: #2271b1; transition: width .4s; }
 
-.lvmu-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 16px 0; }
+.lvmu-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 260px)); gap: 12px; margin: 16px 0; }
 .lvmu-card__title { margin: 0 0 6px; font-size: 13px; color: #50575e; text-transform: uppercase; letter-spacing: .03em; }
 .lvmu-card__title a { text-decoration: none; color: inherit; }
 .lvmu-card__title a:hover, .lvmu-card__title a:focus { color: #2271b1; text-decoration: underline; }
@@ -22,8 +22,6 @@
 .lvmu-card__sub { margin: 10px 0 0; padding-top: 8px; border-top: 1px solid #f0f0f1; font-size: 12px; }
 .lvmu-card__sub li { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 3px; }
 .lvmu-card__sub li span { color: #646970; white-space: nowrap; }
-.lvmu-card--reclaim { border-color: #00a32a; background: #f0f9f1; border-left-width: 4px; }
-.lvmu-card--reclaim .lvmu-card__num { color: #007017; }
 
 .lvmu-types h3 { margin: 0 0 10px; }
 .lvmu-stack { display: flex; height: 22px; border-radius: 4px; overflow: hidden; background: #dcdcde; }
