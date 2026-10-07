@@ -43,12 +43,12 @@ msgid "File"
 msgstr "Bestand"
 
 #: includes/Admin/FilesListTable.php:40
-#: includes/Admin/Page.php:861
+#: includes/Admin/Page.php:870
 msgid "Type"
 msgstr "Type"
 
 #: includes/Admin/FilesListTable.php:41
-#: includes/Admin/Page.php:862
+#: includes/Admin/Page.php:871
 msgid "Role"
 msgstr "Rol"
 
@@ -61,7 +61,7 @@ msgid "Media item"
 msgstr "Media-item"
 
 #: includes/Admin/FilesListTable.php:44
-#: includes/Admin/Page.php:863
+#: includes/Admin/Page.php:872
 msgid "Usage"
 msgstr "Gebruik"
 
@@ -80,8 +80,8 @@ msgstr "Alle"
 #: includes/Admin/FilesListTable.php:69
 #: includes/Admin/FilesListTable.php:304
 #: includes/Admin/Page.php:775
-#: includes/Admin/Page.php:788
-#: includes/Admin/Page.php:865
+#: includes/Admin/Page.php:793
+#: includes/Admin/Page.php:874
 msgid "Unused"
 msgstr "Ongebruikt"
 
@@ -143,13 +143,13 @@ msgstr "Bijlage #%d"
 
 #: includes/Admin/FilesListTable.php:303
 #: includes/Admin/Page.php:775
-#: includes/Admin/Page.php:787
-#: includes/Admin/Page.php:864
+#: includes/Admin/Page.php:792
+#: includes/Admin/Page.php:873
 msgid "Used"
 msgstr "Gebruikt"
 
 #: includes/Admin/FilesListTable.php:305
-#: includes/Admin/Page.php:866
+#: includes/Admin/Page.php:875
 msgid "Unknown"
 msgstr "Onbekend"
 
@@ -518,113 +518,113 @@ msgstr "De originele upload, bewaard naast het -scaled bestand. Telt alleen als 
 msgid "Generated sizes"
 msgstr "Gegenereerde formaten"
 
-#: includes/Admin/Page.php:811
+#: includes/Admin/Page.php:820
 msgid "Size by file type"
 msgstr "Grootte per bestandstype"
 
-#: includes/Admin/Page.php:812
+#: includes/Admin/Page.php:821
 msgid "Size share by file type"
 msgstr "Aandeel in grootte per bestandstype"
 
-#: includes/Admin/Page.php:830
+#: includes/Admin/Page.php:839
 msgid "Images"
 msgstr "Afbeeldingen"
 
-#: includes/Admin/Page.php:831
+#: includes/Admin/Page.php:840
 msgid "Video"
 msgstr "Video"
 
-#: includes/Admin/Page.php:832
+#: includes/Admin/Page.php:841
 msgid "Audio"
 msgstr "Audio"
 
-#: includes/Admin/Page.php:833
+#: includes/Admin/Page.php:842
 msgid "Documents"
 msgstr "Documenten"
 
-#: includes/Admin/Page.php:834
+#: includes/Admin/Page.php:843
 msgid "Archives"
 msgstr "Archieven"
 
-#: includes/Admin/Page.php:835
+#: includes/Admin/Page.php:844
 msgid "Databases"
 msgstr "Databases"
 
-#: includes/Admin/Page.php:836
+#: includes/Admin/Page.php:845
 msgid "Logs"
 msgstr "Logbestanden"
 
-#: includes/Admin/Page.php:837
+#: includes/Admin/Page.php:846
 msgid "Code"
 msgstr "Code"
 
-#: includes/Admin/Page.php:838
+#: includes/Admin/Page.php:847
 msgid "Other"
 msgstr "Overig"
 
-#: includes/Admin/Page.php:844
+#: includes/Admin/Page.php:853
 msgid "Main"
 msgstr "Hoofdbestand"
 
-#: includes/Admin/Page.php:845
+#: includes/Admin/Page.php:854
 msgid "Original"
 msgstr "Origineel"
 
-#: includes/Admin/Page.php:846
+#: includes/Admin/Page.php:855
 msgctxt "file role: generated image size"
 msgid "Size"
 msgstr "Formaat"
 
-#: includes/Admin/Page.php:847
+#: includes/Admin/Page.php:856
 msgid "WebP"
 msgstr "WebP"
 
-#: includes/Admin/Page.php:848
+#: includes/Admin/Page.php:857
 msgid "Orphan"
 msgstr "Los bestand"
 
-#: includes/Admin/Page.php:861
+#: includes/Admin/Page.php:870
 msgid "All types"
 msgstr "Alle types"
 
-#: includes/Admin/Page.php:862
+#: includes/Admin/Page.php:871
 msgid "All roles"
 msgstr "Alle rollen"
 
-#: includes/Admin/Page.php:863
+#: includes/Admin/Page.php:872
 msgid "Any usage"
 msgstr "Elk gebruik"
 
 #. translators: %s: size like 1 MB
-#: includes/Admin/Page.php:873
+#: includes/Admin/Page.php:882
 msgid "%s or larger"
 msgstr "%s of groter"
 
-#: includes/Admin/Page.php:876
+#: includes/Admin/Page.php:885
 msgid "Minimum size"
 msgstr "Minimale grootte"
 
-#: includes/Admin/Page.php:876
+#: includes/Admin/Page.php:885
 msgid "Any size"
 msgstr "Elke grootte"
 
-#: includes/Admin/Page.php:878
+#: includes/Admin/Page.php:887
 msgid "Orphaned only"
 msgstr "Alleen losse bestanden"
 
-#: includes/Admin/Page.php:879
+#: includes/Admin/Page.php:888
 msgid "Search path"
 msgstr "Pad zoeken"
 
-#: includes/Admin/Page.php:880
+#: includes/Admin/Page.php:889
 msgid "Search path…"
 msgstr "Pad zoeken…"
 
-#: includes/Admin/Page.php:881
+#: includes/Admin/Page.php:890
 msgid "Filter"
 msgstr "Filteren"
 
-#: includes/Admin/Page.php:883
+#: includes/Admin/Page.php:892
 msgid "Reset"
 msgstr "Herstellen"
 
@@ -918,10 +918,10 @@ msgstr "Categorie"
 
 #: includes/Admin/Page.php:774
 #: includes/Admin/Page.php:786
-#: includes/Admin/Page.php:799
+#: includes/Admin/Page.php:808
 msgid "Total"
 msgstr "Totaal"
 
 #: includes/Admin/Page.php:788
-msgid "Cannot be deleted"
-msgstr "Niet verwijderbaar"
+msgid "Not applicable: protected files are never deleted"
+msgstr "Niet van toepassing: beschermde bestanden worden nooit verwijderd"

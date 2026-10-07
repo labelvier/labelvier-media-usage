@@ -317,6 +317,9 @@ class FileRepository {
 		if (!empty($args['usage_status']) && in_array($args['usage_status'], self::USAGES, true)) {
 			$where[]  = 'usage_status = %s';
 			$params[] = $args['usage_status'];
+			if ($args['usage_status'] === 'unused') {
+				$where[] = "file_flag <> 'protected'"; // Protected files are never cleaned up, so they are not "unused" here.
+			}
 		}
 		if (!empty($args['orphaned'])) {
 			$where[] = 'attachment_id IS NULL';

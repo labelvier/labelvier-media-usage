@@ -784,12 +784,21 @@ class Page {
 			echo '<th scope="row" class="lvmu-overview__cat"><a href="' . esc_url(self::list_url($base)) . '"' . ($row_cur ? ' aria-current="page"' : '') . '>' . esc_html($label) . '</a>';
 			echo '<span class="lvmu-overview__hint">' . esc_html($hint) . '</span></th>';
 			echo self::stat_cell($c['total'], $base, $row_cur, $label . ' - ' . __('Total', 'labelvier-media-usage')); // phpcs:ignore WordPress.Security.EscapeOutput
-			echo self::stat_cell($c['used'], $base + ['usage_status' => 'used'], $used_cur, $label . ' - ' . __('Used', 'labelvier-media-usage')); // phpcs:ignore WordPress.Security.EscapeOutput
-			echo self::stat_cell($c['unused'], $base + ['usage_status' => 'unused'], $unu_cur, $label . ' - ' . __('Unused', 'labelvier-media-usage'), $key !== 'protected', __('Cannot be deleted', 'labelvier-media-usage')); // phpcs:ignore WordPress.Security.EscapeOutput
+			if ($key === 'protected') {
+				$na = __('Not applicable: protected files are never deleted', 'labelvier-media-usage');
+				$na_cell = '<td class="lvmu-num lvmu-muted" title="' . esc_attr($na) . '"><span aria-hidden="true">&mdash;</span><span class="screen-reader-text">' . esc_html($na) . '</span></td>';
+				echo $na_cell . $na_cell; // phpcs:ignore WordPress.Security.EscapeOutput
+			} else {
+				echo self::stat_cell($c['used'], $base + ['usage_status' => 'used'], $used_cur, $label . ' - ' . __('Used', 'labelvier-media-usage')); // phpcs:ignore WordPress.Security.EscapeOutput
+				echo self::stat_cell($c['unused'], $base + ['usage_status' => 'unused'], $unu_cur, $label . ' - ' . __('Unused', 'labelvier-media-usage')); // phpcs:ignore WordPress.Security.EscapeOutput
+			}
 			echo '</tr>';
 		}
 		$sum = ['used' => ['count' => 0, 'size' => 0], 'unused' => ['count' => 0, 'size' => 0]];
-		foreach ($cats as $c) {
+		foreach ($cats as $cat_key => $c) {
+			if ($cat_key === 'protected') {
+				continue; // Usage is irrelevant for protected files; Total still includes them.
+			}
 			foreach (['used', 'unused'] as $u) {
 				$sum[$u]['count'] += $c[$u]['count'];
 				$sum[$u]['size']  += $c[$u]['size'];
