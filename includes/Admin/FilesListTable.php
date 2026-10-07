@@ -69,6 +69,7 @@ class FilesListTable extends \WP_List_Table {
 			'unused'          => [__('Unused', 'labelvier-media-usage'), ['usage_status' => 'unused']],
 			'orphaned'        => [__('Orphaned', 'labelvier-media-usage'), ['orphaned' => 1]],
 			'protected'       => [__('Protected', 'labelvier-media-usage'), ['special' => 'protected']],
+			'copies'          => [__('Backups and copies', 'labelvier-media-usage'), ['category' => 'copy']],
 			'suspicious'      => [__('To check', 'labelvier-media-usage'), ['special' => 'suspicious']],
 			'originals'       => [__('Originals', 'labelvier-media-usage'), ['file_role' => 'original']],
 			'webp'            => [__('WebP copies', 'labelvier-media-usage'), ['file_role' => 'webp']],
@@ -92,7 +93,7 @@ class FilesListTable extends \WP_List_Table {
 		$views   = [];
 		foreach ($defs as $key => [$label, $args]) {
 			$q     = $this->repo->query(array_merge($args, ['per_page' => 1]) + ['orphaned' => !empty($args['orphaned'])]);
-			if ($key === 'suspicious' && !(int) $q['total'] && $current != $args) {
+			if (in_array($key, ['suspicious', 'copies'], true) && !(int) $q['total'] && $current != $args) {
 				continue; // Only show this view when there is something to check.
 			}
 			$class = ($current == $args && empty($_GET['s'])) ? ' class="current" aria-current="page"' : '';
@@ -153,7 +154,9 @@ class FilesListTable extends \WP_List_Table {
 			. ' data-size-used="' . esc_attr((string) $used['size']) . '"'
 			. ' data-size-used-h="' . esc_attr(size_format($used['size'])) . '"'
 			. ' data-suspicious="' . esc_attr((string) $base['suspicious']) . '"'
-			. ' data-suspicious-used="' . esc_attr((string) $used['suspicious']) . '"></div>';
+			. ' data-suspicious-used="' . esc_attr((string) $used['suspicious']) . '"'
+			. ' data-copies="' . esc_attr((string) $base['copies']) . '"'
+			. ' data-copies-used="' . esc_attr((string) $used['copies']) . '"></div>';
 	}
 
 	/** Reason key when the file can never be deleted, otherwise null. */
@@ -167,6 +170,15 @@ class FilesListTable extends \WP_List_Table {
 
 	private function is_suspicious(object $item): bool {
 		return FileRules::suspicious((string) $item->path);
+	}
+
+	private function copy_reason(object $item): ?string {
+		return $item->file_flag === 'copy' ? ((string) $item->flag_reason ?: 'media_copy') : null;
+	}
+
+	/** Extra data attributes for the confirm dialogs. */
+	private function warn_attrs(object $item): string {
+		return ($this->is_suspicious($item) ? ' data-lvmu-suspicious="1"' : '') . ($this->copy_reason($item) !== null ? ' data-lvmu-copy="1"' : '');
 	}
 
 	protected function column_cb($item): void {
@@ -199,7 +211,7 @@ class FilesListTable extends \WP_List_Table {
 				esc_html($item->filename),
 				esc_html($hint),
 				esc_attr($hint),
-				$this->is_suspicious($item) ? ' data-lvmu-suspicious="1"' : ''
+				$this->warn_attrs($item)
 			);
 			return;
 		}
@@ -208,7 +220,7 @@ class FilesListTable extends \WP_List_Table {
 			(int) $item->id,
 			(int) $item->size,
 			esc_html($item->filename),
-			$this->is_suspicious($item) ? ' data-lvmu-suspicious="1"' : ''
+			$this->warn_attrs($item)
 		);
 	}
 
@@ -241,7 +253,13 @@ class FilesListTable extends \WP_List_Table {
 		if ($reason !== null) {
 			$label = FileRules::reason_label($reason);
 			echo ' <span class="lvmu-badge lvmu-badge--protected" title="' . esc_attr($label) . '">' . esc_html__('Protected', 'labelvier-media-usage') . ' <span class="lvmu-badge__reason">(' . esc_html($label) . ')</span></span>';
-		} elseif ($this->is_suspicious($item)) {
+		}
+		$copy = $this->copy_reason($item);
+		if ($copy !== null) {
+			$tip = FileRules::copy_tip($copy);
+			echo ' <span class="lvmu-badge lvmu-badge--copy" title="' . esc_attr($tip) . '">' . esc_html(FileRules::copy_label($copy)) . '<span class="screen-reader-text"> ' . esc_html($tip) . '</span></span>';
+		}
+		if ($reason === null && $this->is_suspicious($item)) {
 			$tip = __('PHP or script file in uploads. This can be a sign of a hacked site. Deleting it can also break something that relies on it.', 'labelvier-media-usage');
 			echo ' <span class="lvmu-badge lvmu-badge--suspicious" title="' . esc_attr($tip) . '"><span class="dashicons dashicons-warning" aria-hidden="true"></span> ' . esc_html__('Check this file', 'labelvier-media-usage') . '<span class="screen-reader-text"> ' . esc_html($tip) . '</span></span>';
 		}
@@ -260,9 +278,9 @@ class FilesListTable extends \WP_List_Table {
 		if ($scheduled || $this->is_protected($item) || Deleter::disabled_reason() !== '') {
 			// No delete action while scheduled, indexing or without a complete index.
 		} elseif ($item->usage_status === 'used') {
-			$actions['delete'] = '<a class="submitdelete lvmu-confirm lvmu-delete--locked" href="' . esc_url($del) . '" data-lvmu-used="1"' . ($this->is_suspicious($item) ? ' data-lvmu-suspicious="1"' : '') . ' aria-disabled="true" title="' . esc_attr__("Check 'Also delete files marked as used' to delete this file", 'labelvier-media-usage') . '">' . esc_html__('Delete', 'labelvier-media-usage') . '</a>';
+			$actions['delete'] = '<a class="submitdelete lvmu-confirm lvmu-delete--locked" href="' . esc_url($del) . '" data-lvmu-used="1"' . $this->warn_attrs($item) . ' aria-disabled="true" title="' . esc_attr__("Check 'Also delete files marked as used' to delete this file", 'labelvier-media-usage') . '">' . esc_html__('Delete', 'labelvier-media-usage') . '</a>';
 		} else {
-			$actions['delete'] = '<a class="submitdelete lvmu-confirm" href="' . esc_url($del) . '"' . ($this->is_suspicious($item) ? ' data-lvmu-suspicious="1"' : '') . '>' . esc_html__('Delete', 'labelvier-media-usage') . '</a>';
+			$actions['delete'] = '<a class="submitdelete lvmu-confirm" href="' . esc_url($del) . '"' . $this->warn_attrs($item) . '>' . esc_html__('Delete', 'labelvier-media-usage') . '</a>';
 		}
 		echo $this->row_actions($actions); // phpcs:ignore WordPress.Security.EscapeOutput
 	}

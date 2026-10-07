@@ -7,7 +7,7 @@ namespace LabelvierMediaUsage;
  */
 class Schema {
 
-	public const DB_VERSION = '2';
+	public const DB_VERSION = '3';
 	public const OPTION = 'lvmu_db_version';
 
 	public static function files_table(): string {
@@ -85,8 +85,8 @@ class Schema {
 
 		$previous = get_option(self::OPTION);
 		update_option(self::OPTION, self::DB_VERSION, false);
-		if ($previous !== false && version_compare((string) $previous, '2', '<')) {
-			// Flag columns are new: fill them for rows indexed before the upgrade.
+		if ($previous !== false && version_compare((string) $previous, self::DB_VERSION, '<')) {
+			// Flag rules changed (v2: flag columns, v3: copies): recompute the flags of all existing rows.
 			(new FileRepository())->backfill_flags();
 		}
 	}

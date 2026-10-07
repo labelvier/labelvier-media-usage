@@ -67,9 +67,40 @@ PHP and script files (`php`, `php3`-`php8`, `phtml`, `phar`, `cgi`, `pl`, `py`, 
 not protected but flagged "Check this file": in uploads they can be a sign of a hacked
 site. They can be deleted under the normal rules, after an extra warning in the confirm
 dialog. The views "Protected" and "To check" list both groups.
+Files in copy folders are not protected, see below.
 
 Sites can extend the rules in code with the `lvmu_protected_patterns` filter (keys
 `names`, `extensions` and `folders`). The rules live in `includes/FileRules.php`.
+
+## Backups and copies
+
+Some folders outside the `YYYY/MM` structure are not plugin data but copies of media. They
+get the flag `copy` (category "Backups and copies" in the overview, badge "Copy" or
+"Back-up") and can be deleted when unused, after an extra confirmation. Files that are
+still referenced (old URLs) stay locked unless "Also delete files marked as used" is
+checked. Files with an unknown usage are never deleted.
+
+- `media_copy`: a path that does not start with `YYYY/MM/` but contains a `YYYY/MM/file`
+  segment. Regex: `^(?!\d{4}/\d{2}/)(.+/)\d{4}/\d{2}/[^/]+$`. Examples:
+  `uploads/2022/03/x.jpg` (nested uploads after a migration),
+  `ShortpixelBackups/wp-content/uploads/2022/03/x.jpg`, `sites/2/2020/01/x.jpg`,
+  `old-uploads/2019/05/x.jpg`. On a multisite, `sites/N/` is never treated as a copy.
+- `optimizer_backup`: any folder named like an entry of the folder list, at any depth.
+  Default list: `ShortpixelBackups` (source: ShortPixel knowledge base, "Where is the
+  backup folder located": `wp-content/uploads/ShortpixelBackups`). Not included because the
+  name could not be confirmed as a distinct uploads folder: Imagify stores its backups in
+  `uploads/backup/YYYY/MM` (covered by the `media_copy` regex), EWWW keeps them in
+  `wp-content/ewww` (outside uploads) and for Smush no folder name was found.
+- Never a copy: protected names (`.htaccess`, `index.php`, ini/conf, dotfiles) and the
+  protected plugin folders (`updraft`, `ai1wm-backups`, `backwpup-*`, `wc-logs`,
+  `woocommerce_uploads`, `gravity_forms`, `wpforms`, `wp-migrate-db`).
+- Precedence: protected by name/extension/dotfile, then copy, then plugin folder rule, then
+  suspicious. Copies with a PHP or script extension also show the "Check this file" badge and
+  count in the "To check" view.
+- The flags are recomputed for all rows when the database version changes (now 3).
+
+Filters: `lvmu_copy_folders` (array of folder names, fnmatch globs allowed) and
+`lvmu_protected_patterns` (see above). The rules live in `includes/FileRules.php`.
 
 ## WP-CLI
 

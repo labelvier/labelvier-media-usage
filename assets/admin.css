@@ -95,4 +95,5 @@
 .lvmu-badge--protected { background: #e5e5e5; color: #3c434a; margin-left: 6px; }
 .lvmu-badge__reason { opacity: .85; }
 .lvmu-badge--suspicious { background: #fcf9e8; color: #614200; border: 1px solid #dba617; margin-left: 6px; }
+.lvmu-badge--copy { background: #f0f6fc; color: #0a4b78; border: 1px solid #72aee6; margin-left: 6px; }
 .lvmu-badge--suspicious .dashicons { color: #996800; font-size: 14px; width: 14px; height: 14px; vertical-align: text-bottom; }

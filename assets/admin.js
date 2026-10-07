@@ -113,7 +113,7 @@
 
 	/* Deletable totals depend on the allow-used checkbox; the server provides both variants. */
 	function barData(key) {
-		var d = bar.dataset, used = { total: 'totalUsed', totalH: 'totalUsedH', size: 'sizeUsed', sizeH: 'sizeUsedH', suspicious: 'suspiciousUsed' };
+		var d = bar.dataset, used = { total: 'totalUsed', totalH: 'totalUsedH', size: 'sizeUsed', sizeH: 'sizeUsedH', suspicious: 'suspiciousUsed', copies: 'copiesUsed' };
 		if (allowUsedOn() && d[used[key]] !== undefined) { return d[used[key]]; }
 		return d[key];
 	}
@@ -172,20 +172,22 @@
 		var a1 = form.querySelector('select[name="action"]'), a2 = form.querySelector('select[name="action2"]');
 		var act = (a1 && a1.value !== '-1') ? a1.value : (a2 ? a2.value : '-1');
 		if (act !== 'lvmu_delete') { return; }
-		var msg, susp = 0;
+		var msg, susp = 0, copies = 0;
 		if (selectAll.value === '1') {
 			susp = parseInt(barData('suspicious'), 10) || 0;
+			copies = parseInt(barData('copies'), 10) || 0;
 			var tot = barTotal();
 			msg = plural(fmt(i18n.confirmBulkAllOne, barData('sizeH')), fmt(i18n.confirmBulkAll, barData('totalH'), barData('sizeH')), tot);
 		} else {
 			var sel = checked();
 			if (!sel.length) { e.preventDefault(); window.alert(i18n.nothing); return; }
 			var sum = 0;
-			sel.forEach(function (c) { sum += parseInt(c.dataset.size, 10) || 0; if (c.hasAttribute('data-lvmu-suspicious')) { susp++; } });
+			sel.forEach(function (c) { sum += parseInt(c.dataset.size, 10) || 0; if (c.hasAttribute('data-lvmu-suspicious')) { susp++; } if (c.hasAttribute('data-lvmu-copy')) { copies++; } });
 			msg = plural(fmt(i18n.confirmBulkOne, bytes(sum)), fmt(i18n.confirmBulk, sel.length, bytes(sum)), sel.length);
 		}
 		if (allowUsed && allowUsed.checked) { msg += '\n\n' + i18n.confirmUsed; }
 		if (susp > 0) { msg += '\n\n' + plural(i18n.confirmSuspiciousOne, fmt(i18n.confirmSuspicious, susp), susp); }
+		if (copies > 0) { msg += '\n\n' + plural(i18n.confirmCopyOne, fmt(i18n.confirmCopy, copies), copies); }
 		if (!window.confirm(msg)) { e.preventDefault(); }
 	});
 
@@ -202,6 +204,7 @@
 		a.addEventListener('click', function (e) {
 			if (a.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
 			var extra = a.hasAttribute('data-lvmu-suspicious') ? '\n\n' + i18n.confirmSuspiciousOne : '';
+			if (a.hasAttribute('data-lvmu-copy')) { extra += '\n\n' + i18n.confirmCopyOne; }
 			if (a.hasAttribute('data-lvmu-used')) {
 				if (!window.confirm(i18n.confirmOne + '\n\n' + i18n.confirmUsed + extra)) { e.preventDefault(); return; }
 				e.preventDefault();

@@ -12,8 +12,8 @@ class FileRepository {
 	public const TYPES  = ['image', 'video', 'audio', 'document', 'archive', 'database', 'log', 'code', 'other'];
 	public const USAGES = ['used', 'unused', 'unknown'];
 
-	/** Mutually exclusive categories (protected wins over the role), in display order. */
-	public const CATEGORIES = ['media', 'original', 'subsize', 'webp', 'orphan', 'protected'];
+	/** Mutually exclusive categories (protected, then copy, win over the role), in display order. */
+	public const CATEGORIES = ['media', 'original', 'subsize', 'webp', 'orphan', 'copy', 'protected'];
 
 	private const TYPE_MAP = [
 		'image'    => ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg', 'bmp', 'tif', 'tiff', 'ico', 'heic'],
@@ -107,11 +107,13 @@ class FileRepository {
 		$table = Schema::files_table();
 		$last  = 0;
 		do {
-			$rows = $wpdb->get_results($wpdb->prepare("SELECT id, path FROM {$table} WHERE id > %d ORDER BY id ASC LIMIT 2000", $last));
+			$rows = $wpdb->get_results($wpdb->prepare("SELECT id, path, file_flag, flag_reason FROM {$table} WHERE id > %d ORDER BY id ASC LIMIT 2000", $last));
 			foreach ($rows as $row) {
 				$last  = (int) $row->id;
 				$flags = FileRules::flags((string) $row->path);
-				$wpdb->update($table, $flags, ['id' => $last]);
+				if ($flags['file_flag'] !== (string) $row->file_flag || $flags['flag_reason'] !== (string) $row->flag_reason) {
+					$wpdb->update($table, $flags, ['id' => $last]);
+				}
 			}
 		} while (count($rows) === 2000);
 	}
@@ -247,23 +249,32 @@ class FileRepository {
 
 	/**
 	 * @param int[] $exclude_ids Ids already scheduled for deletion.
-	 * @return array{count: int, size: int, suspicious: int}
+	 * @return array{count: int, size: int, suspicious: int, copies: int}
 	 */
 	public function deletable_totals(array $args, bool $allow_used, array $exclude_ids = []): array {
 		global $wpdb;
 		$table = Schema::files_table();
 		[$where, $params] = $this->deletable_where($args, $allow_used, $exclude_ids);
-		$row = $wpdb->get_row($wpdb->prepare("SELECT COUNT(*) AS c, COALESCE(SUM(size), 0) AS s, COALESCE(SUM(file_flag = 'suspicious'), 0) AS x FROM {$table} WHERE " . implode(' AND ', $where), $params));
-		return ['count' => (int) $row->c, 'size' => (int) $row->s, 'suspicious' => (int) $row->x];
+		$row = $wpdb->get_row($wpdb->prepare("SELECT COUNT(*) AS c, COALESCE(SUM(size), 0) AS s, COALESCE(SUM(" . self::suspicious_sql() . "), 0) AS x, COALESCE(SUM(file_flag = 'copy'), 0) AS k FROM {$table} WHERE " . implode(' AND ', $where), $params));
+		return ['count' => (int) $row->c, 'size' => (int) $row->s, 'suspicious' => (int) $row->x, 'copies' => (int) $row->k];
 	}
 
-	/** SQL condition for one category: protected wins, so the others exclude protected files. */
+	/** SQL condition for files to check: flagged suspicious, or copies with a script extension. */
+	public static function suspicious_sql(): string {
+		$ext = "'" . implode("','", array_map('esc_sql', FileRules::SUSPICIOUS_EXTENSIONS)) . "'";
+		return "(file_flag = 'suspicious' OR (file_flag = 'copy' AND extension IN ({$ext})))";
+	}
+
+	/** SQL condition for one category: protected wins, then copy, then the role. */
 	public static function category_sql(string $category): string {
 		if ($category === 'protected') {
 			return "file_flag = 'protected'";
 		}
+		if ($category === 'copy') {
+			return "file_flag = 'copy'";
+		}
 		$role = ['media' => 'main', 'original' => 'original', 'subsize' => 'subsize', 'webp' => 'webp', 'orphan' => 'orphan'][$category] ?? 'orphan';
-		return "(file_role = '{$role}' AND file_flag <> 'protected')";
+		return "(file_role = '{$role}' AND file_flag NOT IN ('protected','copy'))";
 	}
 
 	/**
@@ -279,7 +290,7 @@ class FileRepository {
 		foreach (self::CATEGORIES as $c) {
 			$out[$c] = ['total' => $empty, 'used' => $empty, 'unused' => $empty];
 		}
-		$case = "CASE WHEN file_flag = 'protected' THEN 'protected' WHEN file_role = 'main' THEN 'media' ELSE file_role END";
+		$case = "CASE WHEN file_flag = 'protected' THEN 'protected' WHEN file_flag = 'copy' THEN 'copy' WHEN file_role = 'main' THEN 'media' ELSE file_role END";
 		foreach ($wpdb->get_results("SELECT {$case} AS cat, usage_status AS u, COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table} GROUP BY cat, u") as $row) {
 			if (!isset($out[$row->cat])) {
 				continue;
@@ -335,7 +346,9 @@ class FileRepository {
 		if (!empty($args['category']) && in_array($args['category'], self::CATEGORIES, true)) {
 			$where[] = self::category_sql($args['category']);
 		}
-		if (!empty($args['special']) && in_array($args['special'], ['protected', 'suspicious'], true)) {
+		if (!empty($args['special']) && $args['special'] === 'suspicious') {
+			$where[] = self::suspicious_sql();
+		} elseif (!empty($args['special']) && in_array($args['special'], ['protected', 'copy'], true)) {
 			$where[]  = 'file_flag = %s';
 			$params[] = $args['special'];
 		}
