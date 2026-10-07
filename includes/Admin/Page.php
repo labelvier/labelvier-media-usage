@@ -92,7 +92,7 @@ class Page {
 		if (isset($_GET['lvmu_action']) && $_GET['lvmu_action'] === 'delete' && isset($_GET['file'])) {
 			$id = absint($_GET['file']);
 			check_admin_referer('lvmu_delete_' . $id);
-			self::run_delete([$id], false);
+			self::run_delete([$id], !empty($_GET['lvmu_allow_used']));
 		}
 
 		// Bulk delete.
@@ -272,6 +272,10 @@ class Page {
 		echo '<h1 class="wp-heading-inline">' . esc_html__('Media Usage', 'labelvier-media-usage') . '</h1><hr class="wp-header-end">';
 
 		self::render_result_notice();
+		$blocked = Deleter::disabled_reason();
+		if ($blocked !== '') {
+			echo '<div class="notice notice-warning inline lvmu-delete-disabled"><p>' . esc_html($blocked) . '</p></div>';
+		}
 		self::render_status($state, $summary);
 		if ($summary['total']['count'] > 0) {
 			self::render_summary($summary);

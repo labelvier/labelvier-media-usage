@@ -2,6 +2,7 @@
 
 namespace LabelvierMediaUsage\Admin;
 
+use LabelvierMediaUsage\Deleter;
 use LabelvierMediaUsage\FileRepository;
 
 if (!class_exists('WP_List_Table')) {
@@ -49,6 +50,9 @@ class FilesListTable extends \WP_List_Table {
 	}
 
 	protected function get_bulk_actions(): array {
+		if (Deleter::disabled_reason() !== '') {
+			return [];
+		}
 		return ['lvmu_delete' => __('Delete permanently', 'labelvier-media-usage')];
 	}
 
@@ -102,7 +106,7 @@ class FilesListTable extends \WP_List_Table {
 
 	/** Gmail-style "select all matching" and the used-files override. */
 	protected function extra_tablenav($which): void {
-		if ($which !== 'top') {
+		if ($which !== 'top' || Deleter::disabled_reason() !== '') {
 			return;
 		}
 		$total = (int) $this->_pagination_args['total_items'];
@@ -119,6 +123,18 @@ class FilesListTable extends \WP_List_Table {
 	}
 
 	protected function column_cb($item): void {
+		if ($item->usage_status === 'used') {
+			$hint = __("Check 'Also delete files marked as used' to select this file", 'labelvier-media-usage');
+			printf(
+				'<label class="screen-reader-text" for="lvmu-cb-%1$d">%3$s <span class="lvmu-used-hint">(%4$s)</span></label><input type="checkbox" id="lvmu-cb-%1$d" name="file[]" value="%1$d" data-size="%2$d" data-lvmu-used="1" disabled title="%5$s">',
+				(int) $item->id,
+				(int) $item->size,
+				esc_html($item->filename),
+				esc_html($hint),
+				esc_attr($hint)
+			);
+			return;
+		}
 		printf(
 			'<label class="screen-reader-text" for="lvmu-cb-%1$d">%3$s</label><input type="checkbox" id="lvmu-cb-%1$d" name="file[]" value="%1$d" data-size="%2$d">',
 			(int) $item->id,
@@ -160,7 +176,13 @@ class FilesListTable extends \WP_List_Table {
 			}
 		}
 		$del = wp_nonce_url(Page::url(['lvmu_action' => 'delete', 'file' => (int) $item->id]), 'lvmu_delete_' . (int) $item->id);
-		$actions['delete'] = '<a class="submitdelete lvmu-confirm" href="' . esc_url($del) . '">' . esc_html__('Delete', 'labelvier-media-usage') . '</a>';
+		if (Deleter::disabled_reason() !== '') {
+			// No delete action while indexing or without a complete index.
+		} elseif ($item->usage_status === 'used') {
+			$actions['delete'] = '<a class="submitdelete lvmu-confirm lvmu-delete--locked" href="' . esc_url($del) . '" data-lvmu-used="1" aria-disabled="true" title="' . esc_attr__("Check 'Also delete files marked as used' to delete this file", 'labelvier-media-usage') . '">' . esc_html__('Delete', 'labelvier-media-usage') . '</a>';
+		} else {
+			$actions['delete'] = '<a class="submitdelete lvmu-confirm" href="' . esc_url($del) . '">' . esc_html__('Delete', 'labelvier-media-usage') . '</a>';
+		}
 		echo $this->row_actions($actions); // phpcs:ignore WordPress.Security.EscapeOutput
 	}
 

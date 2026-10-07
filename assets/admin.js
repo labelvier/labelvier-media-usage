@@ -46,8 +46,35 @@
 	var allowUsed = document.getElementById('lvmu-allow-used');
 	var warning = document.getElementById('lvmu-used-warning');
 
-	function rows() { return form.querySelectorAll('tbody input[name="file[]"]'); }
-	function checked() { return form.querySelectorAll('tbody input[name="file[]"]:checked'); }
+	function rows() { return form.querySelectorAll('tbody input[name="file[]"]:not(:disabled)'); }
+	function checked() { return form.querySelectorAll('tbody input[name="file[]"]:checked:not(:disabled)'); }
+
+	/* Used files are locked unless "Also delete files marked as used" is checked. */
+	function allowUsedOn() {
+		var boxes = form.querySelectorAll('input[name="lvmu_allow_used"]');
+		for (var i = 0; i < boxes.length; i++) { if (boxes[i].checked) { return true; } }
+		return false;
+	}
+	function lockUsed() {
+		var on = allowUsedOn();
+		form.querySelectorAll('tbody input[name="file[]"][data-lvmu-used]').forEach(function (cb) {
+			cb.disabled = !on;
+			if (!on) { cb.checked = false; }
+		});
+		form.querySelectorAll('a.lvmu-delete--locked').forEach(function (a) {
+			a.setAttribute('aria-disabled', on ? 'false' : 'true');
+			a.classList.toggle('lvmu-delete--locked', !on);
+			a.classList.toggle('lvmu-delete--unlocked', on);
+		});
+		if (!on) {
+			form.querySelectorAll('input[type=checkbox][id^="cb-select-all"]').forEach(function (b) { b.checked = false; });
+			setAll(false);
+		}
+		updateBar();
+	}
+	function uncheckLocked() {
+		form.querySelectorAll('tbody input[name="file[]"]:disabled').forEach(function (cb) { cb.checked = false; });
+	}
 	function setAll(on) { if (selectAll) { selectAll.value = on ? '1' : '0'; } }
 
 	function updateBar() {
@@ -82,13 +109,20 @@
 		if (e.target.name === 'file[]' || e.target.id.indexOf('cb-select-all') === 0) {
 			setAll(false);
 			// WP core toggles the row checkboxes in its own handler; read after it ran.
-			setTimeout(updateBar, 0);
+			setTimeout(function () { uncheckLocked(); updateBar(); }, 0);
 		}
 	});
 
 	if (allowUsed && warning) {
 		allowUsed.addEventListener('change', function () { warning.hidden = !allowUsed.checked; });
 	}
+	form.querySelectorAll('input[name="lvmu_allow_used"]').forEach(function (cb) {
+		cb.addEventListener('change', function () {
+			form.querySelectorAll('input[name="lvmu_allow_used"]').forEach(function (o) { o.checked = cb.checked; });
+			lockUsed();
+		});
+	});
+	lockUsed();
 
 	form.addEventListener('submit', function (e) {
 		var a1 = form.querySelector('select[name="action"]'), a2 = form.querySelector('select[name="action2"]');
@@ -109,6 +143,15 @@
 	});
 
 	document.querySelectorAll('.lvmu-confirm').forEach(function (a) {
-		a.addEventListener('click', function (e) { if (!window.confirm(i18n.confirmOne)) { e.preventDefault(); } });
+		a.addEventListener('click', function (e) {
+			if (a.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
+			if (a.hasAttribute('data-lvmu-used')) {
+				if (!window.confirm(i18n.confirmOne + '\n\n' + i18n.confirmUsed)) { e.preventDefault(); return; }
+				e.preventDefault();
+				window.location.href = a.href + (a.href.indexOf('?') < 0 ? '?' : '&') + 'lvmu_allow_used=1';
+				return;
+			}
+			if (!window.confirm(i18n.confirmOne)) { e.preventDefault(); }
+		});
 	});
 })();

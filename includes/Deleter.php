@@ -8,14 +8,32 @@ namespace LabelvierMediaUsage;
 class Deleter {
 
 	/** Maximum number of files handled in a single request. */
-	public const MAX_PER_REQUEST = 2000;
+	public const MAX_PER_REQUEST = 500;
 
-	private const PROTECTED_NAMES = ['index.php', '.htaccess', 'web.config'];
+	private const PROTECTED_NAMES = ['index.php', 'index.html', 'index.htm', '.user.ini', 'web.config', '.htaccess'];
 
 	private FileRepository $repo;
 
+	/** scan_id of the completed index run the deletion is based on. */
+	private int $scan_id = 0;
+
 	public function __construct(?FileRepository $repo = null) {
 		$this->repo = $repo ?? new FileRepository();
+	}
+
+	/**
+	 * Deleting is only allowed on the result of a complete, finished index run.
+	 * Returns an empty string when allowed, otherwise the reason it is not.
+	 */
+	public static function disabled_reason(): string {
+		$state = ScanState::get();
+		if ($state['status'] === 'running') {
+			return __('Deleting is disabled while indexing.', 'labelvier-media-usage');
+		}
+		if ($state['status'] !== 'done' || !(int) $state['scan_id']) {
+			return __('Deleting is disabled until a complete index has run.', 'labelvier-media-usage');
+		}
+		return '';
 	}
 
 	/**
@@ -25,6 +43,13 @@ class Deleter {
 	 */
 	public function delete(array $file_ids, bool $allow_used = false): array {
 		$result = ['deleted' => 0, 'freed' => 0, 'skipped' => [], 'errors' => [], 'remaining' => 0];
+
+		$blocked = self::disabled_reason();
+		if ($blocked !== '') {
+			$result['errors'][] = ['path' => '', 'reason' => $blocked];
+			return $result;
+		}
+		$this->scan_id = (int) ScanState::get()['scan_id'];
 
 		$file_ids = array_values(array_unique(array_filter(array_map('intval', $file_ids))));
 		if (count($file_ids) > self::MAX_PER_REQUEST) {
@@ -80,8 +105,23 @@ class Deleter {
 			$this->skip($result, $row, __('Protected file.', 'labelvier-media-usage'));
 			return;
 		}
-		if ($row->usage_status === 'used' && !$allow_used) {
-			$this->skip($result, $row, __('File is in use.', 'labelvier-media-usage'));
+		if ((int) $row->scan_id !== $this->scan_id) {
+			$this->skip($result, $row, __('Not part of the latest complete index.', 'labelvier-media-usage'));
+			return;
+		}
+		if ($row->usage_status === 'used') {
+			if (!$allow_used) {
+				$this->skip($result, $row, __('File is in use.', 'labelvier-media-usage'));
+				return;
+			}
+		} elseif ($row->usage_status !== 'unused') {
+			$this->skip($result, $row, __('Usage unknown.', 'labelvier-media-usage'));
+			return;
+		}
+		if (!$allow_used && $this->used_since_index($row)) {
+			global $wpdb;
+			$wpdb->update(Schema::files_table(), ['usage_status' => 'used'], ['id' => (int) $row->id]);
+			$this->skip($result, $row, __('Used since last index.', 'labelvier-media-usage'));
 			return;
 		}
 
@@ -141,6 +181,10 @@ class Deleter {
 	}
 
 	private function unlink_file(object $row, string|false $real, array &$result, array &$gone, ?callable $after = null): void {
+		if ($real !== false && $this->is_attached_file($row->path)) {
+			$this->skip($result, $row, __('File is the main file of an attachment.', 'labelvier-media-usage'));
+			return;
+		}
 		if ($real === false || !@unlink($real)) { // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.WP.AlternativeFunctions
 			$this->error($result, $row, __('Could not delete the file (permissions?).', 'labelvier-media-usage'));
 			return;
@@ -163,6 +207,16 @@ class Deleter {
 			return;
 		}
 
+		$shared = $this->shared_with_other_attachment($attachment_id);
+		if ($shared !== '') {
+			$this->skip($result, $row, sprintf(
+				/* translators: %s: shared file path */
+				__('File is shared with another attachment (%s).', 'labelvier-media-usage'),
+				$shared
+			));
+			return;
+		}
+
 		$variants = $this->repo->find_by_attachment($attachment_id);
 		if (!wp_delete_attachment($attachment_id, true)) {
 			$this->error($result, $row, __('WordPress could not delete the attachment.', 'labelvier-media-usage'));
@@ -174,7 +228,7 @@ class Deleter {
 		foreach ($variants as $variant) {
 			$path = FileRepository::absolute_path($variant->path);
 			$real = file_exists($path) ? realpath($path) : false;
-			if ($variant->file_role === 'webp' && $real && $basedir && str_starts_with($real, $basedir . DIRECTORY_SEPARATOR)) {
+			if ($variant->file_role === 'webp' && $real && !$this->is_attached_file($variant->path) && $basedir && str_starts_with($real, $basedir . DIRECTORY_SEPARATOR)) {
 				@unlink($real);
 			}
 		}
@@ -197,5 +251,141 @@ class Deleter {
 				unset($gone[(int) $variant->id]);
 			}
 		}
+	}
+
+	/* ------------------------------------------------------------ safety checks */
+
+	/** True when a relative path is some attachment's `_wp_attached_file`. */
+	private function is_attached_file(string $path): bool {
+		global $wpdb;
+		return (bool) $wpdb->get_var($wpdb->prepare(
+			"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attached_file' AND meta_value = %s LIMIT 1",
+			ltrim($path, '/')
+		));
+	}
+
+	/**
+	 * Relative paths of all files an attachment's metadata lists (main, sizes, original).
+	 *
+	 * @return string[]
+	 */
+	private function attachment_files(int $attachment_id): array {
+		$main = (string) get_post_meta($attachment_id, '_wp_attached_file', true);
+		if ($main === '') {
+			return [];
+		}
+		$files = [$main];
+		$dir   = dirname($main);
+		$dir   = $dir === '.' ? '' : $dir . '/';
+		$meta  = wp_get_attachment_metadata($attachment_id);
+		if (is_array($meta)) {
+			if (!empty($meta['file']) && is_string($meta['file'])) {
+				$files[] = $meta['file'];
+			}
+			foreach ((array) ($meta['sizes'] ?? []) as $size) {
+				if (!empty($size['file']) && is_string($size['file'])) {
+					$files[] = $dir . $size['file'];
+				}
+			}
+			if (!empty($meta['original_image']) && is_string($meta['original_image'])) {
+				$files[] = $dir . $meta['original_image'];
+			}
+		}
+		return array_values(array_unique($files));
+	}
+
+	/**
+	 * Returns a shared file path when another attachment uses the main file or any size
+	 * file of this attachment, otherwise ''.
+	 */
+	private function shared_with_other_attachment(int $attachment_id): string {
+		global $wpdb;
+		$mine = $this->attachment_files($attachment_id);
+		if (!$mine) {
+			return '';
+		}
+
+		// Another attachment whose main file is one of ours.
+		$in    = implode(',', array_fill(0, count($mine), '%s'));
+		$other = $wpdb->get_var($wpdb->prepare(
+			"SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attached_file' AND post_id <> %d AND meta_value IN ({$in}) LIMIT 1",
+			array_merge([$attachment_id], $mine)
+		));
+		if ($other) {
+			return (string) $other;
+		}
+
+		// Another attachment whose metadata lists one of our files.
+		$candidates = [];
+		foreach (array_unique(array_map('wp_basename', $mine)) as $basename) {
+			$ids = $wpdb->get_col($wpdb->prepare(
+				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_wp_attachment_metadata' AND post_id <> %d AND meta_value LIKE %s LIMIT 20",
+				$attachment_id,
+				'%' . $wpdb->esc_like($basename) . '%'
+			));
+			foreach ($ids as $id) {
+				$candidates[(int) $id] = true;
+			}
+		}
+		foreach (array_keys($candidates) as $id) {
+			$common = array_intersect($mine, $this->attachment_files($id));
+			if ($common) {
+				return (string) reset($common);
+			}
+		}
+		return '';
+	}
+
+	/**
+	 * Cheap live check whether a file is referenced in content, meta or options even
+	 * though the (possibly up to 24h old) index says it is unused.
+	 */
+	private function used_since_index(object $row): bool {
+		global $wpdb;
+
+		$needles = [wp_basename($row->path)];
+		if ($row->file_role === 'main' && $row->attachment_id) {
+			foreach (array_slice($this->repo->find_by_attachment((int) $row->attachment_id), 0, 50) as $variant) {
+				$needles[] = wp_basename($variant->path);
+			}
+		}
+		$like_content = "post_type NOT IN ('attachment', 'revision') AND post_status NOT IN ('trash', 'auto-draft')";
+
+		foreach (array_unique($needles) as $needle) {
+			$like = '%' . $wpdb->esc_like($needle) . '%';
+			if ($wpdb->get_var($wpdb->prepare("SELECT ID FROM {$wpdb->posts} WHERE {$like_content} AND post_content LIKE %s LIMIT 1", $like))) {
+				return true;
+			}
+			if ($wpdb->get_var($wpdb->prepare(
+				"SELECT meta_id FROM {$wpdb->postmeta} WHERE meta_key NOT IN ('_wp_attached_file', '_wp_attachment_metadata', '_wp_attachment_backup_sizes') AND meta_value LIKE %s LIMIT 1",
+				$like
+			))) {
+				return true;
+			}
+			if ($wpdb->get_var($wpdb->prepare(
+				"SELECT option_id FROM {$wpdb->options} WHERE option_name NOT LIKE %s AND option_name NOT LIKE %s AND option_value LIKE %s LIMIT 1",
+				$wpdb->esc_like('_transient') . '%',
+				$wpdb->esc_like('lvmu_') . '%',
+				$like
+			))) {
+				return true;
+			}
+		}
+
+		if ($row->file_role === 'main' && $row->attachment_id) {
+			$id = (int) $row->attachment_id;
+			if ($wpdb->get_var($wpdb->prepare("SELECT meta_id FROM {$wpdb->postmeta} WHERE meta_key = '_thumbnail_id' AND meta_value = %s LIMIT 1", (string) $id))) {
+				return true;
+			}
+			if ($wpdb->get_var($wpdb->prepare(
+				"SELECT ID FROM {$wpdb->posts} WHERE {$like_content} AND (post_content LIKE %s OR post_content LIKE %s OR post_content LIKE %s) LIMIT 1",
+				'%' . $wpdb->esc_like('wp-image-' . $id . '"') . '%',
+				'%' . $wpdb->esc_like('"id":' . $id . ',') . '%',
+				'%' . $wpdb->esc_like('"id":' . $id . '}') . '%'
+			))) {
+				return true;
+			}
+		}
+		return false;
 	}
 }
