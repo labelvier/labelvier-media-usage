@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-07T08:29:57+00:00\n"
+"POT-Creation-Date: 2026-10-07T08:51:45+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.10.0\n"
 "X-Domain: labelvier-media-usage\n"
@@ -78,7 +78,7 @@ msgid "All"
 msgstr ""
 
 #: includes/Admin/FilesListTable.php:68
-#: includes/Admin/FilesListTable.php:246
+#: includes/Admin/FilesListTable.php:255
 #: includes/Admin/Page.php:769
 msgid "Unused"
 msgstr ""
@@ -102,64 +102,69 @@ msgstr ""
 msgid "WebP copies"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:114
+#. translators: 1: number of files, 2: total size (e.g. 0.4 MB)
+#: includes/Admin/FilesListTable.php:82
+msgid "(%1$s, %2$s)"
+msgstr ""
+
+#: includes/Admin/FilesListTable.php:123
 msgid "No files found."
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:125
+#: includes/Admin/FilesListTable.php:134
 msgid "Also delete files marked as used"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:127
+#: includes/Admin/FilesListTable.php:136
 msgid "Warning: files marked as used are referenced in your content. Deleting them will break images and links."
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:141
-#: includes/Admin/FilesListTable.php:188
+#: includes/Admin/FilesListTable.php:150
+#: includes/Admin/FilesListTable.php:197
 msgid "Scheduled for deletion"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:146
+#: includes/Admin/FilesListTable.php:155
 msgid "Check 'Also delete files marked as used' to select this file"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:193
+#: includes/Admin/FilesListTable.php:202
 msgid "View"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:198
+#: includes/Admin/FilesListTable.php:207
 msgid "Edit attachment"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:205
+#: includes/Admin/FilesListTable.php:214
 msgid "Check 'Also delete files marked as used' to delete this file"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:205
-#: includes/Admin/FilesListTable.php:207
+#: includes/Admin/FilesListTable.php:214
+#: includes/Admin/FilesListTable.php:216
 msgid "Delete"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:229
+#: includes/Admin/FilesListTable.php:238
 msgid "Not in Media Library"
 msgstr ""
 
 #. translators: %d: attachment ID
-#: includes/Admin/FilesListTable.php:235
+#: includes/Admin/FilesListTable.php:244
 msgid "Attachment #%d"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:245
+#: includes/Admin/FilesListTable.php:254
 #: includes/Admin/Page.php:768
 msgid "Used"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:247
+#: includes/Admin/FilesListTable.php:256
 #: includes/Admin/Page.php:770
 msgid "Unknown"
 msgstr ""
 
-#: includes/Admin/FilesListTable.php:259
+#: includes/Admin/FilesListTable.php:268
 msgid "Where used"
 msgstr ""
 

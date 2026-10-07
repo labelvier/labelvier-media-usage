@@ -73,6 +73,15 @@ class FilesListTable extends \WP_List_Table {
 		];
 	}
 
+	/** "(count)" or "(count, size)" label for a view. */
+	protected static function count_label(int $total, int $bytes): string {
+		if ($bytes <= 0) {
+			return '(' . number_format_i18n($total) . ')';
+		}
+		/* translators: 1: number of files, 2: total size (e.g. 0.4 MB) */
+		return sprintf(__('(%1$s, %2$s)', 'labelvier-media-usage'), number_format_i18n($total), size_format($bytes, 1));
+	}
+
 	protected function get_views(): array {
 		$defs    = self::view_defs();
 		$current = Page::filter_args($this->filters);
@@ -81,7 +90,7 @@ class FilesListTable extends \WP_List_Table {
 			$q     = $this->repo->query(array_merge($args, ['per_page' => 1]) + ['orphaned' => !empty($args['orphaned'])]);
 			$class = ($current == $args && empty($_GET['s'])) ? ' class="current" aria-current="page"' : '';
 			$views[$key] = '<a href="' . esc_url(Page::list_url($args)) . '"' . $class . '>' . esc_html($label)
-				. ' <span class="count">(' . esc_html(number_format_i18n($q['total'])) . ')</span></a>';
+				. ' <span class="count">' . esc_html(self::count_label((int) $q['total'], (int) $q['total_size'])) . '</span></a>';
 		}
 		return $views;
 	}
