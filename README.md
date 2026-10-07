@@ -39,9 +39,12 @@ tables with the WordPress prefix), or when its Media Library item is referenced 
 site icon/logo, media-ish option and meta keys). All files of a used Media Library item
 count as used, except the original: WordPress serves the `-scaled` file, so an original
 is only used when it is referenced directly. Deleting an unused original keeps the
-Media Library item working; you lose the full size upload (used for regenerating
-thumbnails at a larger size and in the image editor). Revisions, trashed posts and
-"uploaded to" do not count as usage.
+Media Library item working: regenerating thumbnails falls back to the `-scaled` file,
+the image editor already works on the `-scaled` file, and the frontend never uses the
+original. What you lose is the full resolution file itself (e.g. for downloads or
+print) and the ability to generate sizes larger than the `-scaled` file (default max
+2560px on the longest side). Revisions, trashed posts and "uploaded to" do not count
+as usage.
 
 Not detected: references in plugin code, external sites or newsletters. Check before
 deleting files that might be linked from outside the site.
