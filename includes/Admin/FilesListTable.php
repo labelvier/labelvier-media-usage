@@ -61,8 +61,9 @@ class FilesListTable extends \WP_List_Table {
 		return ['lvmu_delete' => __('Delete permanently', 'labelvier-media-usage')];
 	}
 
-	protected function get_views(): array {
-		$defs = [
+	/** View definitions: key => [label, filter args]. */
+	public static function view_defs(): array {
+		return [
 			'all'             => [__('All', 'labelvier-media-usage'), []],
 			'unused'          => [__('Unused', 'labelvier-media-usage'), ['usage_status' => 'unused']],
 			'orphaned'        => [__('Orphaned', 'labelvier-media-usage'), ['orphaned' => 1]],
@@ -70,12 +71,16 @@ class FilesListTable extends \WP_List_Table {
 			'originals'       => [__('Originals (pre-scaled)', 'labelvier-media-usage'), ['file_role' => 'original']],
 			'webp'            => [__('WebP copies', 'labelvier-media-usage'), ['file_role' => 'webp']],
 		];
+	}
+
+	protected function get_views(): array {
+		$defs    = self::view_defs();
 		$current = Page::filter_args($this->filters);
 		$views   = [];
 		foreach ($defs as $key => [$label, $args]) {
 			$q     = $this->repo->query(array_merge($args, ['per_page' => 1]) + ['orphaned' => !empty($args['orphaned'])]);
 			$class = ($current == $args && empty($_GET['s'])) ? ' class="current" aria-current="page"' : '';
-			$views[$key] = '<a href="' . esc_url(Page::url($args)) . '"' . $class . '>' . esc_html($label)
+			$views[$key] = '<a href="' . esc_url(Page::list_url($args)) . '"' . $class . '>' . esc_html($label)
 				. ' <span class="count">(' . esc_html(number_format_i18n($q['total'])) . ')</span></a>';
 		}
 		return $views;

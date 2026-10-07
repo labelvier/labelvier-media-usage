@@ -81,8 +81,10 @@
 .lvmu-jobs .lvmu-job__actions { margin-left: auto; }
 .lvmu-jobs .lvmu-details { flex-basis: 100%; }
 
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
 /* Info box below the floated views list */
-.lvmu-originals-info {
+.lvmu-files { scroll-margin-top: 48px; }
+.lvmu-view-info {
 	clear: both;
 	margin: 12px 0;
 }

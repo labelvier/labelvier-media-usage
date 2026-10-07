@@ -175,6 +175,15 @@
 		if (!window.confirm(msg)) { e.preventDefault(); }
 	});
 
+	// Land on the list after filtering, sorting or paging (WP_List_Table links carry no hash).
+	(function () {
+		var target = document.getElementById('lvmu-files');
+		if (!target || window.location.hash) { return; }
+		if (!/[?&](file_type|file_role|usage_status|min_size|orphaned|s|orderby|order|paged)=/.test(window.location.search)) { return; }
+		var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+	})();
+
 	document.querySelectorAll('.lvmu-confirm').forEach(function (a) {
 		a.addEventListener('click', function (e) {
 			if (a.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
