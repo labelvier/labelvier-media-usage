@@ -1,0 +1,69 @@
+.lvmu-wrap .lvmu-box,
+.lvmu-card { background: #fff; border: 1px solid #c3c4c7; border-radius: 4px; padding: 12px 16px; box-shadow: 0 1px 1px rgba(0,0,0,.04); }
+.lvmu-wrap .lvmu-box { margin: 16px 0; }
+.lvmu-status { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.lvmu-status__info { flex: 1 1 320px; min-width: 0; }
+.lvmu-status p { margin: 0 0 6px; }
+.lvmu-status__last .dashicons { color: #646970; }
+.lvmu-progress[hidden] { display: none; }
+.lvmu-bar { height: 10px; background: #dcdcde; border-radius: 5px; overflow: hidden; margin: 6px 0 10px; }
+.lvmu-bar span { display: block; height: 100%; background: #2271b1; transition: width .4s; }
+
+.lvmu-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 16px 0; }
+.lvmu-card__title { margin: 0 0 6px; font-size: 13px; color: #50575e; text-transform: uppercase; letter-spacing: .03em; }
+.lvmu-card__title a { text-decoration: none; color: inherit; }
+.lvmu-card__title a:hover, .lvmu-card__title a:focus { color: #2271b1; text-decoration: underline; }
+.lvmu-card__num { margin: 0; font-size: 26px; font-weight: 600; line-height: 1.2; }
+.lvmu-card__num span { font-size: 12px; font-weight: 400; color: #646970; }
+.lvmu-card__size { margin: 2px 0 0; color: #50575e; font-size: 14px; }
+.lvmu-card__sub { margin: 10px 0 0; padding-top: 8px; border-top: 1px solid #f0f0f1; font-size: 12px; }
+.lvmu-card__sub li { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 3px; }
+.lvmu-card__sub li span { color: #646970; white-space: nowrap; }
+.lvmu-card--reclaim { border-color: #00a32a; background: #f0f9f1; border-left-width: 4px; }
+.lvmu-card--reclaim .lvmu-card__num { color: #007017; }
+
+.lvmu-types h3 { margin: 0 0 10px; }
+.lvmu-stack { display: flex; height: 22px; border-radius: 4px; overflow: hidden; background: #dcdcde; }
+.lvmu-stack span { display: block; height: 100%; min-width: 2px; }
+.lvmu-legend { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 12px 0 0; }
+.lvmu-legend li { margin: 0; display: flex; align-items: center; gap: 6px; }
+.lvmu-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; }
+.lvmu-t-image { background: #2271b1; }
+.lvmu-t-video { background: #8c3fb5; }
+.lvmu-t-audio { background: #d63638; }
+.lvmu-t-document { background: #dba617; }
+.lvmu-t-archive { background: #d46f00; }
+.lvmu-t-database { background: #00a32a; }
+.lvmu-t-log { background: #50575e; }
+.lvmu-t-code { background: #1d9aa8; }
+.lvmu-t-other { background: #a7aaad; }
+
+.lvmu-filters { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end; margin: 12px 0; }
+.lvmu-field { display: flex; flex-direction: column; gap: 2px; }
+.lvmu-field label { font-size: 12px; color: #50575e; }
+.lvmu-check { display: inline-flex; align-items: center; gap: 4px; padding-bottom: 4px; }
+.lvmu-bulk-extra { display: flex; align-items: center; margin-left: 8px; }
+.lvmu-allow-warning { flex-basis: 100%; margin: 6px 0; }
+.lvmu-select-all-bar { clear: both; padding: 8px 12px; margin: 4px 0; background: #f0f6fc; border: 1px solid #72aee6; border-radius: 3px; }
+.lvmu-select-all-bar[hidden], .lvmu-allow-warning[hidden] { display: none; }
+.lvmu-select-all-bar button { margin-left: 8px; }
+
+.lvmu-wrap .column-cb { width: 2.2em; }
+.lvmu-wrap .column-thumb { width: 52px; }
+.lvmu-wrap .column-size { width: 90px; }
+.lvmu-wrap .column-role, .lvmu-wrap .column-file_type { width: 90px; }
+.lvmu-thumb { display: block; width: 40px; height: 40px; object-fit: cover; border-radius: 3px; background: #f0f0f1; }
+.lvmu-thumb--icon { font-size: 28px; line-height: 40px; text-align: center; color: #646970; width: 40px; height: 40px; }
+.lvmu-filename { word-break: break-all; }
+.lvmu-path { color: #646970; font-size: 12px; word-break: break-all; }
+.lvmu-badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; line-height: 1.7; background: #f0f0f1; color: #3c434a; }
+.lvmu-badge--used { background: #d7f0dc; color: #00450c; }
+.lvmu-badge--unused { background: #fcf0c3; color: #4f3b00; }
+.lvmu-badge--unknown { background: #e5e5e5; color: #3c434a; }
+.lvmu-badge--orphan { background: #f6d6d7; color: #6b0b0e; }
+.lvmu-badge--main { background: #dce9f6; color: #0a3a66; }
+.lvmu-details { margin-top: 4px; font-size: 12px; }
+.lvmu-details summary { cursor: pointer; color: #2271b1; }
+.lvmu-details ul { margin: 4px 0 0 16px; list-style: disc; }
+.lvmu-wrap a:focus, .lvmu-wrap summary:focus-visible, .lvmu-wrap input:focus-visible, .lvmu-wrap select:focus-visible { outline: 2px solid #2271b1; outline-offset: 1px; }
+@media (max-width: 782px) { .lvmu-wrap .column-thumb { display: none; } }

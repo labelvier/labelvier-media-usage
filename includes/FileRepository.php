@@ -33,6 +33,15 @@ class FileRepository {
 		return 'other';
 	}
 
+	/**
+	 * All known file extensions (lowercase, no dot).
+	 *
+	 * @return string[]
+	 */
+	public static function extensions(): array {
+		return array_merge(...array_values(self::TYPE_MAP));
+	}
+
 	public static function uploads_basedir(): string {
 		return wp_normalize_path(untrailingslashit(wp_get_upload_dir()['basedir']));
 	}
