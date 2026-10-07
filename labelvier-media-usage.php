@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Label Vier Media Usage
  * Description: Indexes every file in the uploads folder, links files to Media Library items and finds unused and orphaned files.
- * Version: 0.1.0
+ * Version: 0.2.0
  * Requires at least: 6.4
  * Requires PHP: 8.1
  * Author: Label Vier
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-define('LVMU_VERSION', '0.1.0');
+define('LVMU_VERSION', '0.2.0');
 define('LVMU_FILE', __FILE__);
 define('LVMU_DIR', __DIR__);
 define('LVMU_URL', plugin_dir_url(__FILE__));
