@@ -39,7 +39,7 @@ class Deleter {
 	 * @param bool  $allow_used Also delete files whose usage_status is 'used'.
 	 * @return array{deleted: int, freed: int, skipped: array<int, array{path: string, reason: string}>, errors: array<int, array{path: string, reason: string}>, remaining: int}
 	 */
-	public function delete(array $file_ids, bool $allow_used = false): array {
+	public function delete(array $file_ids, bool $allow_used = false, ?callable $progress = null): array {
 		$result = ['deleted' => 0, 'freed' => 0, 'skipped' => [], 'errors' => [], 'remaining' => 0];
 
 		$blocked = self::disabled_reason();
@@ -70,6 +70,7 @@ class Deleter {
 		$base = wp_normalize_path($base);
 
 		$gone = []; // ids already handled (e.g. variants removed together with their attachment)
+		$done = 0;
 
 		foreach (array_chunk($file_ids, 200) as $chunk) {
 			$rows = $this->repo->find($chunk);
@@ -77,10 +78,14 @@ class Deleter {
 			usort($rows, static fn($a, $b) => (int) ($b->file_role === 'main') <=> (int) ($a->file_role === 'main'));
 
 			foreach ($rows as $row) {
+				$done++;
 				if (isset($gone[(int) $row->id])) {
 					continue;
 				}
 				$this->delete_one($row, $base, $allow_used, $result, $gone);
+				if ($progress) {
+					$progress($result, $done);
+				}
 			}
 		}
 

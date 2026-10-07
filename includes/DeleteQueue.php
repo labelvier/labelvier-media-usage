@@ -54,6 +54,16 @@ class DeleteQueue {
 		update_option(self::OPTION, $jobs, false);
 	}
 
+	/** Update only the progress counters of one running job (re-reads the option first). */
+	private static function save_progress(int $job_id, array $fields): void {
+		$jobs = self::jobs();
+		if (!isset($jobs[$job_id]) || $jobs[$job_id]['status'] !== 'running') {
+			return;
+		}
+		$jobs[$job_id] = array_merge($jobs[$job_id], $fields);
+		update_option(self::OPTION, $jobs, false);
+	}
+
 	/** Remove a finished job from the list. */
 	public static function dismiss(int $job_id): bool {
 		$jobs = self::jobs();
@@ -229,7 +239,21 @@ class DeleteQueue {
 				return;
 			}
 			$chunk = array_slice($job['file_ids'], (int) $job['processed'], self::CHUNK);
-			$res   = $deleter->delete($chunk, (bool) $job['allow_used']);
+			$base  = ['processed' => (int) $job['processed'], 'deleted' => (int) $job['deleted'], 'freed' => (int) $job['freed']];
+			$last  = 0.0;
+			$size  = count($chunk);
+			$res   = $deleter->delete($chunk, (bool) $job['allow_used'], static function (array $running, int $done) use ($job_id, $base, $size, &$last): void {
+				// Live progress for the admin: at most one write per second.
+				if (microtime(true) - $last < 1) {
+					return;
+				}
+				$last = microtime(true);
+				self::save_progress($job_id, [
+					'processed' => $base['processed'] + min($done, $size),
+					'deleted'   => $base['deleted'] + $running['deleted'],
+					'freed'     => $base['freed'] + $running['freed'],
+				]);
+			});
 
 			// Deleting got disabled between the check and the call: retry the chunk later.
 			if (!$res['deleted'] && !$res['skipped'] && count($res['errors']) === 1 && $res['errors'][0]['path'] === '' && Deleter::disabled_reason() !== '') {
