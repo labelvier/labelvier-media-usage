@@ -253,7 +253,7 @@ class Scheduler {
 		$phase    = (string) ($state['phase'] ?: self::first_phase());
 		$attempts = (int) get_option(self::OPT_WATCHDOG, 0) + 1;
 		if ($attempts > self::WATCHDOG_MAX) {
-			ScanState::update(['status' => 'failed', 'error' => "Phase {$phase} crashed repeatedly", 'finished_at' => time()]);
+			ScanState::update(['status' => 'failed', 'error' => sprintf(/* translators: %s: phase name */ __('The index stopped during the phase "%s" and kept failing.', 'labelvier-media-usage'), $phase), 'finished_at' => time()]);
 			return;
 		}
 		update_option(self::OPT_WATCHDOG, $attempts, false);

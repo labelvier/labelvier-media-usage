@@ -231,6 +231,7 @@ class FilesListTable extends \WP_List_Table {
 		}
 		$title = get_the_title((int) $item->attachment_id);
 		$edit  = get_edit_post_link((int) $item->attachment_id);
+		/* translators: %d: attachment ID */
 		$title = $title !== '' ? $title : sprintf(__('Attachment #%d', 'labelvier-media-usage'), (int) $item->attachment_id);
 		if ($edit) {
 			echo '<a href="' . esc_url($edit) . '">' . esc_html($title) . '</a>';

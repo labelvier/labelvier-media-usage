@@ -43,7 +43,7 @@ class UsageLookup {
 			case 'postmeta':
 				$post = $num ? get_post($num) : null;
 				if (!$post) {
-					return ['label' => sprintf(__('Post #%d', 'labelvier-media-usage'), $num) . self::field($field), 'url' => null];
+					return ['label' => sprintf(/* translators: %d: post ID */ __('Post #%d', 'labelvier-media-usage'), $num) . self::field($field), 'url' => null];
 				}
 				$type_object = get_post_type_object($post->post_type);
 				$type_label  = $type_object ? $type_object->labels->singular_name : $post->post_type;
@@ -58,11 +58,11 @@ class UsageLookup {
 			case 'termmeta':
 				$term = $num ? get_term($num) : null;
 				if (!$term || is_wp_error($term)) {
-					return ['label' => sprintf(__('Term #%d', 'labelvier-media-usage'), $num) . self::field($field), 'url' => null];
+					return ['label' => sprintf(/* translators: %d: term ID */ __('Term #%d', 'labelvier-media-usage'), $num) . self::field($field), 'url' => null];
 				}
 				$link = get_edit_term_link($term);
 				return [
-					'label' => sprintf(__('Term: %1$s (%2$s)', 'labelvier-media-usage'), $term->name, $term->taxonomy) . self::field($field),
+					'label' => sprintf(/* translators: 1: term name, 2: taxonomy */ __('Term: %1$s (%2$s)', 'labelvier-media-usage'), $term->name, $term->taxonomy) . self::field($field),
 					'url'   => is_string($link) ? $link : null,
 				];
 
@@ -70,7 +70,7 @@ class UsageLookup {
 			case 'usermeta':
 				$user = $num ? get_userdata($num) : false;
 				return [
-					'label' => ($user ? sprintf(__('User: %s', 'labelvier-media-usage'), $user->display_name) : sprintf(__('User #%d', 'labelvier-media-usage'), $num)) . self::field($field),
+					'label' => ($user ? sprintf(/* translators: %s: user name */ __('User: %s', 'labelvier-media-usage'), $user->display_name) : sprintf(/* translators: %d: user ID */ __('User #%d', 'labelvier-media-usage'), $num)) . self::field($field),
 					'url'   => $user ? (get_edit_user_link($user->ID) ?: null) : null,
 				];
 
@@ -78,19 +78,19 @@ class UsageLookup {
 			case 'commentmeta':
 				$link = $num ? get_edit_comment_link($num) : null;
 				return [
-					'label' => sprintf(__('Comment #%d', 'labelvier-media-usage'), $num) . self::field($field),
+					'label' => sprintf(/* translators: %d: comment ID */ __('Comment #%d', 'labelvier-media-usage'), $num) . self::field($field),
 					'url'   => is_string($link) && $link !== '' ? $link : null,
 				];
 
 			case 'option':
-				return ['label' => sprintf(__('Option: %s', 'labelvier-media-usage'), $field), 'url' => null];
+				return ['label' => sprintf(/* translators: %s: option name */ __('Option: %s', 'labelvier-media-usage'), $field), 'url' => null];
 
 			case 'file':
-				return ['label' => sprintf(__('Theme file: %1$s/%2$s', 'labelvier-media-usage'), $id, $field), 'url' => null];
+				return ['label' => sprintf(/* translators: 1: theme, 2: file */ __('Theme file: %1$s/%2$s', 'labelvier-media-usage'), $id, $field), 'url' => null];
 
 			default:
 				return [
-					'label' => sprintf(__('Table %1$s #%2$s', 'labelvier-media-usage'), $table, $id) . self::field($field),
+					'label' => sprintf(/* translators: 1: table name, 2: row ID */ __('Table %1$s #%2$s', 'labelvier-media-usage'), $table, $id) . self::field($field),
 					'url'   => null,
 				];
 		}

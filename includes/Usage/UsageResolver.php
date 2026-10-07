@@ -260,7 +260,7 @@ class UsageResolver implements PhaseInterface {
 		}
 		$rows = $wpdb->get_results($sql);
 		if ($wpdb->last_error) {
-			throw new \RuntimeException('Resolving usage failed: ' . $wpdb->last_error);
+			throw new \RuntimeException(__('Resolving usage failed: ', 'labelvier-media-usage') . $wpdb->last_error);
 		}
 		return $rows ?: [];
 	}

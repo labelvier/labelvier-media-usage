@@ -16,6 +16,9 @@ class Plugin {
 	}
 
 	public function boot(): void {
+		add_action('init', static function () {
+			load_plugin_textdomain('labelvier-media-usage', false, dirname(plugin_basename(LVMU_FILE)) . '/languages');
+		});
 		Schema::maybe_install();
 		if (is_multisite()) {
 			add_action('admin_notices', [self::class, 'multisite_notice']);

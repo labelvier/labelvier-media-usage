@@ -9,6 +9,7 @@
  * Author URI: https://labelvier.nl
  * License: GPL-2.0-or-later
  * Text Domain: labelvier-media-usage
+ * Domain Path: /languages
  */
 
 use LabelvierMediaUsage\Plugin;

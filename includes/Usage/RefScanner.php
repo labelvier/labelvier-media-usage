@@ -223,7 +223,12 @@ class RefScanner implements PhaseInterface {
 				$state['skipped'][] = $item['table'] . ' (' . $item['kind'] . '): ' . $error;
 				return [0, 0, true];
 			}
-			throw new \RuntimeException(sprintf('Reference scan failed on table %s (%s): %s', $item['table'], $item['kind'], $error));
+			throw new \RuntimeException(sprintf(
+				/* translators: 1: table name, 2: kind of table, 3: database error */
+				__('Reference scan failed on table %1$s (%2$s): %3$s', 'labelvier-media-usage'),
+				$item['table'], $item['kind'],
+				$error
+			));
 		}
 
 		$refs  = [];
@@ -410,7 +415,12 @@ class RefScanner implements PhaseInterface {
 				$row = array_map(static fn(string $v) => preg_replace('/[\x{10000}-\x{10FFFF}]/u', '?', $v) ?? $v, $row);
 				if ($this->insert_rows([$row], $scan_id) === false) {
 					global $wpdb;
-					throw new \RuntimeException(sprintf('Could not store reference "%s" (%s): %s', mb_substr($row[1], 0, 120), $row[0], $wpdb->last_error));
+					throw new \RuntimeException(sprintf(
+						/* translators: 1: reference value, 2: type, 3: database error */
+						__('Could not store reference "%1$s" (%2$s): %3$s', 'labelvier-media-usage'),
+						mb_substr($row[1], 0, 120), $row[0],
+						$wpdb->last_error
+					));
 				}
 			}
 		}

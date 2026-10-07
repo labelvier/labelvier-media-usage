@@ -8,6 +8,7 @@
 		var i = 0;
 		return str.replace(/%(\d\$)?s/g, function () { return args[i++]; });
 	}
+	function plural(one, other, n) { return n === 1 ? one : other; }
 	function bytes(n) {
 		var u = ['B', 'KB', 'MB', 'GB', 'TB'], i = 0;
 		while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
@@ -116,7 +117,7 @@
 		bar.textContent = '';
 		if (selectAll.value === '1') {
 			bar.hidden = false;
-			bar.appendChild(document.createTextNode(fmt(i18n.allSelected, bar.dataset.totalH) + ' '));
+			bar.appendChild(document.createTextNode(plural(i18n.allSelectedOne, fmt(i18n.allSelected, bar.dataset.totalH), total) + ' '));
 			var c = document.createElement('button');
 			c.type = 'button'; c.className = 'button-link'; c.textContent = i18n.clear;
 			c.addEventListener('click', function () {
@@ -128,10 +129,10 @@
 			bar.appendChild(c);
 		} else if (n > 0 && n === rows().length && total > n) {
 			bar.hidden = false;
-			bar.appendChild(document.createTextNode(fmt(i18n.pageSelected, n) + ' '));
+			bar.appendChild(document.createTextNode(plural(i18n.pageSelectedOne, fmt(i18n.pageSelected, n), n) + ' '));
 			var b = document.createElement('button');
 			b.type = 'button'; b.className = 'button-link';
-			b.textContent = fmt(i18n.selectAll, bar.dataset.totalH);
+			b.textContent = plural(i18n.selectAllOne, fmt(i18n.selectAll, bar.dataset.totalH), total);
 			b.addEventListener('click', function () { setAll(true); updateBar(); });
 			bar.appendChild(b);
 		} else {
@@ -163,13 +164,14 @@
 		if (act !== 'lvmu_delete') { return; }
 		var msg;
 		if (selectAll.value === '1') {
-			msg = fmt(i18n.confirmBulkAll, bar.dataset.totalH, bar.dataset.sizeH);
+			var tot = parseInt(bar.dataset.total, 10);
+			msg = plural(fmt(i18n.confirmBulkAllOne, bar.dataset.sizeH), fmt(i18n.confirmBulkAll, bar.dataset.totalH, bar.dataset.sizeH), tot);
 		} else {
 			var sel = checked();
 			if (!sel.length) { e.preventDefault(); window.alert(i18n.nothing); return; }
 			var sum = 0;
 			sel.forEach(function (c) { sum += parseInt(c.dataset.size, 10) || 0; });
-			msg = fmt(i18n.confirmBulk, sel.length, bytes(sum));
+			msg = plural(fmt(i18n.confirmBulkOne, bytes(sum)), fmt(i18n.confirmBulk, sel.length, bytes(sum)), sel.length);
 		}
 		if (allowUsed && allowUsed.checked) { msg += '\n\n' + i18n.confirmUsed; }
 		if (!window.confirm(msg)) { e.preventDefault(); }
