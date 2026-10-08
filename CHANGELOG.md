@@ -4,6 +4,20 @@ All notable changes to this plugin are documented in this file. The format is ba
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the plugin uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.1] - 2026-10-08
+
+### Fixed
+- Delete jobs got stuck on "running" when the browser closed or reloaded while a status
+  poll was running the job; jobs could also stay "scheduled" without ever starting. Jobs
+  now keep running when the browser goes away, resume from the remaining files and a
+  watchdog re-queues stalled jobs (failing them after 3 attempts).
+- Delete job counters no longer count files that were already gone.
+
+### Added
+- Delete job progress per file.
+- "Resume now" and "Cancel" for stalled delete jobs.
+- `wp lvmu summary` shows the same categories as the admin overview.
+
 ## [0.2.0] - 2026-10-07
 
 ### Added
