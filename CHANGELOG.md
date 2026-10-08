@@ -4,6 +4,12 @@ All notable changes to this plugin are documented in this file. The format is ba
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the plugin uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.2] - 2026-10-08
+
+### Fixed
+- Delete jobs waiting for an earlier job showed as "stalled"; they now show as queued
+  ("starts when the job before it is done") and their stored status is corrected.
+
 ## [0.2.1] - 2026-10-08
 
 ### Fixed
