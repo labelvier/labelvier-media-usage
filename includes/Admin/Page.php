@@ -601,7 +601,11 @@ class Page {
 			$what = sprintf(_n('%1$s file (%2$s)', '%1$s files (%2$s)', (int) $job['count'], 'labelvier-media-usage'), $fmt($job['count']), $size);
 			$link = static fn(string $action, string $label) => '<a href="' . esc_url(wp_nonce_url(self::url(['lvmu_action' => $action, 'job' => $id]), 'lvmu_job_' . $id)) . '">' . esc_html($label) . '</a>';
 
-			if ($job['status'] === 'pending') {
+			if (DeleteQueue::is_waiting($job)) {
+				/* translators: 1: files and size, 2: relative time, 3: user name */
+				$text = sprintf(__('Queued — starts when the job before it is done: delete %1$s — queued %2$s ago by %3$s', 'labelvier-media-usage'), $what, human_time_diff((int) $job['created_at']), $name);
+				$out .= '<div class="notice notice-warning inline lvmu-job"><p><span>' . esc_html($text) . '</span><span class="lvmu-job__actions">' . $link('cancel_job', __('Cancel', 'labelvier-media-usage')) . '</span></p></div>';
+			} elseif ($job['status'] === 'pending') {
 				/* translators: 1: files and size, 2: relative time, 3: user name */
 				$text = sprintf(__('Scheduled: delete %1$s — queued %2$s ago by %3$s', 'labelvier-media-usage'), $what, human_time_diff((int) $job['created_at']), $name);
 				if ($job['note'] !== '') {
@@ -614,7 +618,7 @@ class Page {
 				$out .= '</p></div>';
 			} elseif ($job['status'] === 'running' && DeleteQueue::is_stale($job)) {
 				/* translators: 1: files and size, 2: files done, 3: total files */
-				$text = sprintf(__('Stalled — will resume: deleting %1$s, %2$s of %3$s done', 'labelvier-media-usage'), $what, $fmt($job['processed']), $fmt($job['count']));
+				$text = sprintf(__('Stalled — will resume automatically within a few minutes: deleting %1$s, %2$s of %3$s done', 'labelvier-media-usage'), $what, $fmt($job['processed']), $fmt($job['count']));
 				$out .= '<div class="notice notice-warning inline lvmu-job"><p><span class="dashicons dashicons-warning" aria-hidden="true"></span><span>' . esc_html($text) . '</span><span class="lvmu-job__actions">' . $link('resume_job', __('Resume now', 'labelvier-media-usage')) . ' | ' . $link('cancel_job', __('Cancel', 'labelvier-media-usage')) . '</span></p></div>';
 			} elseif ($job['status'] === 'running') {
 				/* translators: 1: files and size, 2: files done, 3: total files */

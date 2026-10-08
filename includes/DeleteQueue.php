@@ -131,6 +131,30 @@ class DeleteQueue {
 		return $ids ? (int) min($ids) : 0;
 	}
 
+	/** A job that has to wait for another active job before it. */
+	public static function is_waiting(array $job): bool {
+		return in_array($job['status'], ['pending', 'running'], true) && (int) $job['id'] !== self::head_id();
+	}
+
+	/**
+	 * Jobs run one at a time. A job that is not up next can still say 'running' (left over from an
+	 * older version or a crash): put it back to pending, keeping its counters and remaining ids.
+	 */
+	public static function normalize(): void {
+		$head = self::head_id();
+		$jobs = self::jobs();
+		$dirty = false;
+		foreach ($jobs as $id => $job) {
+			if ($job['status'] === 'running' && (int) $id !== $head) {
+				$jobs[$id]['status'] = 'pending';
+				$dirty = true;
+			}
+		}
+		if ($dirty) {
+			update_option(self::OPTION, $jobs, false);
+		}
+	}
+
 	/* ------------------------------------------------------------------ schedule */
 
 	/**
@@ -246,7 +270,7 @@ class DeleteQueue {
 		if (!$job) {
 			return false;
 		}
-		$waiting = $job['status'] === 'pending' && !$job['started_at'];
+		$waiting = ($job['status'] === 'pending' && !$job['started_at']) || self::is_waiting($job);
 		if (!$waiting && !self::is_stale($job)) {
 			return false;
 		}
@@ -264,8 +288,8 @@ class DeleteQueue {
 	/** Resume a stalled or waiting job right now: queue it again and run it in this request. */
 	public static function resume(int $job_id): bool {
 		$job = self::get($job_id);
-		if (!$job || !in_array($job['status'], ['pending', 'running'], true)) {
-			return false;
+		if (!$job || !in_array($job['status'], ['pending', 'running'], true) || self::is_waiting($job)) {
+			return false; // jobs run one at a time: only the job that is up next can be resumed
 		}
 		$job['last_progress_at'] = time();
 		$job['note']             = '';
@@ -289,6 +313,7 @@ class DeleteQueue {
 		if (!self::has_active()) {
 			return;
 		}
+		self::normalize();
 		if ($throttled) {
 			if (get_transient(self::WATCHDOG_THROTTLE)) {
 				return;
@@ -357,6 +382,7 @@ class DeleteQueue {
 		}
 		// Jobs run one at a time, oldest first; the next one is queued when this one ends.
 		if (!$force && self::head_id() !== $job_id) {
+			self::normalize();
 			return;
 		}
 		// One runner at a time (Action Scheduler and the admin poll can overlap).
