@@ -37,10 +37,13 @@ class Deleter {
 	/**
 	 * @param int[] $file_ids   Row ids from lvmu_files.
 	 * @param bool  $allow_used Also delete files whose usage_status is 'used'.
-	 * @return array{deleted: int, freed: int, skipped: array<int, array{path: string, reason: string}>, errors: array<int, array{path: string, reason: string}>, remaining: int}
+	 * @param callable|null $progress Called after every handled row with ($result, $rows_done, $handled_ids);
+	 *                                returning false stops the run after that row (time box).
+	 * @return array{deleted: int, freed: int, skipped: array<int, array{path: string, reason: string}>, errors: array<int, array{path: string, reason: string}>, remaining: int, handled: int[], stopped: bool}
+	 *         `handled` lists every requested id that was fully dealt with (also ids without an index row).
 	 */
 	public function delete(array $file_ids, bool $allow_used = false, ?callable $progress = null): array {
-		$result = ['deleted' => 0, 'freed' => 0, 'skipped' => [], 'errors' => [], 'remaining' => 0];
+		$result = ['deleted' => 0, 'freed' => 0, 'skipped' => [], 'errors' => [], 'remaining' => 0, 'handled' => [], 'stopped' => false];
 
 		$blocked = self::disabled_reason();
 		if ($blocked !== '') {
@@ -69,8 +72,9 @@ class Deleter {
 		}
 		$base = wp_normalize_path($base);
 
-		$gone = []; // ids already handled (e.g. variants removed together with their attachment)
-		$done = 0;
+		$gone    = []; // ids already handled (e.g. variants removed together with their attachment)
+		$handled = [];
+		$done    = 0;
 
 		foreach (array_chunk($file_ids, 200) as $chunk) {
 			$rows = $this->repo->find($chunk);
@@ -80,14 +84,21 @@ class Deleter {
 			foreach ($rows as $row) {
 				$done++;
 				if (isset($gone[(int) $row->id])) {
+					$handled[(int) $row->id] = true;
 					continue;
 				}
 				$this->delete_one($row, $base, $allow_used, $result, $gone);
-				if ($progress) {
-					$progress($result, $done);
+				$handled[(int) $row->id] = true;
+				$handled += $gone;
+				if ($progress && $progress($result, $done, array_keys($handled)) === false) {
+					$result['stopped'] = true;
+					break 2;
 				}
 			}
+			// Ids without an index row (already removed) count as handled too.
+			$handled += array_fill_keys($chunk, true);
 		}
+		$result['handled'] = array_keys($handled);
 
 		do_action('lvmu_deleted_files', $result);
 
@@ -220,6 +231,10 @@ class Deleter {
 		}
 
 		$variants = $this->repo->find_by_attachment($attachment_id);
+		$existed  = [];
+		foreach ($variants as $variant) {
+			$existed[(int) $variant->id] = file_exists(FileRepository::absolute_path($variant->path));
+		}
 		if (!wp_delete_attachment($attachment_id, true)) {
 			$this->error($result, $row, __('WordPress could not delete the attachment.', 'labelvier-media-usage'));
 			return;
@@ -239,9 +254,12 @@ class Deleter {
 		foreach ($variants as $variant) {
 			$gone[(int) $variant->id] = true;
 			if (!file_exists(FileRepository::absolute_path($variant->path))) {
-				$remove[]         = (int) $variant->id;
-				$result['freed'] += (int) $variant->size;
-				$result['deleted']++;
+				$remove[] = (int) $variant->id;
+				// Only count files that were really removed now, not ones already gone before.
+				if (!empty($existed[(int) $variant->id])) {
+					$result['freed'] += (int) $variant->size;
+					$result['deleted']++;
+				}
 			}
 		}
 		// Rows of files that still exist (e.g. webp copies WP does not know about) stay in the index as orphans.

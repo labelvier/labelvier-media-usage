@@ -19,7 +19,12 @@ files (including zips, sql dumps and logs).
   listed at the top of the page, with a **Cancel** link as long as a job has not started.
   Running jobs show their progress, finished jobs show the result (deleted, freed, skipped)
   and can be dismissed. A job waits while an index run is active. Files in a scheduled job
-  are marked and cannot be selected again. Deleting a single file from its row stays immediate.
+  are marked and cannot be selected again. Jobs run one at a time, oldest first. A job
+  remembers which files are still to do, so it resumes where it stopped when a request is
+  aborted or PHP dies. A watchdog (every ~2 minutes and on every status poll) restarts a job
+  that made no progress for 3 minutes, or a queued job without an Action Scheduler action; after
+  3 failed restarts the job is marked failed. A stalled job shows **Resume now** and **Cancel**.
+  Status polls keep running a job even when the browser closes the connection. Deleting a single file from its row stays immediate.
 
 ### File roles
 

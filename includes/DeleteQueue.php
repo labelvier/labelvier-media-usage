@@ -17,11 +17,18 @@ class DeleteQueue {
 	public const KEEP_DAYS  = 7;
 	public const MAX_ITEMS  = 50;
 	public const RECENT     = DAY_IN_SECONDS;
+	/** A running job without progress for this long counts as stalled. */
+	public const STALE_AFTER = 3 * MINUTE_IN_SECONDS;
+	/** An in-progress action older than this no longer blocks a resume. */
+	public const STUCK_AFTER = 10 * MINUTE_IN_SECONDS;
+	public const MAX_ATTEMPTS = 3;
+	public const WATCHDOG_THROTTLE = 'lvmu_delete_watchdog';
 
 	private static bool $locked = false;
 
 	public static function register(): void {
 		add_action(self::HOOK, [self::class, 'run'], 10, 1);
+		add_action('init', [self::class, 'watchdog'], 30);
 	}
 
 	/* ------------------------------------------------------------------ storage */
@@ -92,9 +99,36 @@ class DeleteQueue {
 	public static function scheduled_ids(): array {
 		$ids = [];
 		foreach (self::active_jobs() as $job) {
-			$ids[] = array_slice($job['file_ids'], (int) $job['processed']);
+			$ids[] = self::remaining($job);
 		}
 		return $ids ? array_values(array_unique(array_merge(...$ids))) : [];
+	}
+
+	/**
+	 * Ids a job still has to handle. Jobs made by older versions have no 'remaining' list:
+	 * they start over from all of their file_ids (the Deleter skips files that are gone).
+	 *
+	 * @return int[]
+	 */
+	public static function remaining(array $job): array {
+		$ids = array_key_exists('remaining', $job) ? $job['remaining'] : ($job['file_ids'] ?? []);
+		return array_values(array_map('intval', (array) $ids));
+	}
+
+	/** Timestamp of the last sign of life of a job. */
+	public static function last_progress(array $job): int {
+		return (int) ($job['last_progress_at'] ?? 0) ?: (int) ($job['started_at'] ?? 0) ?: (int) ($job['created_at'] ?? 0);
+	}
+
+	/** Running, but nothing happened for a while. */
+	public static function is_stale(array $job): bool {
+		return $job['status'] === 'running' && time() - self::last_progress($job) > self::STALE_AFTER;
+	}
+
+	/** Id of the job that is up next: jobs run one at a time, in created order. */
+	public static function head_id(): int {
+		$ids = array_keys(self::active_jobs());
+		return $ids ? (int) min($ids) : 0;
 	}
 
 	/* ------------------------------------------------------------------ schedule */
@@ -122,7 +156,10 @@ class DeleteQueue {
 			'id'          => $seq,
 			'created_at'  => time(),
 			'user_id'     => $user_id,
-			'file_ids'    => $file_ids,
+			'file_ids'    => [],
+			'remaining'   => $file_ids,
+			'attempts'    => 0,
+			'last_progress_at' => time(),
 			'allow_used'  => $allow_used,
 			'count'       => $count,
 			'total_size'  => $size,
@@ -139,7 +176,10 @@ class DeleteQueue {
 			'started_at'  => null,
 			'finished_at' => null,
 		]);
-		self::enqueue($seq);
+		// Jobs run one at a time; a job that has to wait is queued when the one before it ends.
+		if (self::head_id() === $seq) {
+			self::enqueue($seq);
+		}
 		return $seq;
 	}
 
@@ -148,49 +188,175 @@ class DeleteQueue {
 		return sprintf(_n('%1$s file, %2$s', '%1$s files, %2$s', $count, 'labelvier-media-usage'), number_format_i18n($count), size_format($size));
 	}
 
+	/** Queue the job unless an action for it is already waiting. */
 	private static function enqueue(int $job_id): void {
-		if (function_exists('as_enqueue_async_action')) {
+		if (function_exists('as_enqueue_async_action') && !self::has_pending_action($job_id)) {
 			as_enqueue_async_action(self::HOOK, [$job_id], Scheduler::GROUP);
 		}
 	}
 
 	private static function has_pending_action(int $job_id): bool {
-		if (!function_exists('as_get_scheduled_actions')) {
+		return self::has_action($job_id, [\ActionScheduler_Store::STATUS_PENDING]);
+	}
+
+	/** @param string[] $statuses */
+	private static function has_action(int $job_id, array $statuses): bool {
+		if (!function_exists('as_get_scheduled_actions') || !class_exists('ActionScheduler_Store')) {
 			return false;
 		}
-		return (bool) as_get_scheduled_actions([
-			'hook'     => self::HOOK,
-			'args'     => [$job_id],
-			'group'    => Scheduler::GROUP,
-			'status'   => \ActionScheduler_Store::STATUS_PENDING,
-			'per_page' => 1,
-		], 'ids');
+		foreach ($statuses as $status) {
+			if (as_get_scheduled_actions([
+				'hook'     => self::HOOK,
+				'args'     => [$job_id],
+				'group'    => Scheduler::GROUP,
+				'status'   => $status,
+				'per_page' => 1,
+			], 'ids')) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static function unschedule(int $job_id): void {
+		if (function_exists('as_unschedule_all_actions')) {
+			as_unschedule_all_actions(self::HOOK, [$job_id], Scheduler::GROUP);
+		}
+	}
+
+	/** Start the next job in line (after a job ended). */
+	private static function kick_next(): void {
+		$next = self::head_id();
+		if (!$next) {
+			return;
+		}
+		$job = self::get($next);
+		if ($job && $job['status'] === 'running') {
+			$job['last_progress_at'] = time();
+			self::save($job);
+		}
+		self::enqueue($next);
 	}
 
 	/* ------------------------------------------------------------------ cancel */
 
-	/** Cancel a job that has not started yet. */
+	/** Cancel a job that has not started yet, or one that stalled. Counters are kept. */
 	public static function cancel(int $job_id): bool {
 		$job = self::get($job_id);
-		if (!$job || $job['status'] !== 'pending' || $job['started_at']) {
+		if (!$job) {
 			return false;
 		}
-		if (function_exists('as_unschedule_all_actions')) {
-			as_unschedule_all_actions(self::HOOK, [$job_id], Scheduler::GROUP);
+		$waiting = $job['status'] === 'pending' && !$job['started_at'];
+		if (!$waiting && !self::is_stale($job)) {
+			return false;
 		}
+		self::unschedule($job_id);
 		$job['status']      = 'cancelled';
 		$job['note']        = '';
 		$job['file_ids']    = [];
+		$job['remaining']   = [];
 		$job['finished_at'] = time();
 		self::save($job);
+		self::kick_next();
 		return true;
+	}
+
+	/** Resume a stalled or waiting job right now: queue it again and run it in this request. */
+	public static function resume(int $job_id): bool {
+		$job = self::get($job_id);
+		if (!$job || !in_array($job['status'], ['pending', 'running'], true)) {
+			return false;
+		}
+		$job['last_progress_at'] = time();
+		$job['note']             = '';
+		self::save($job);
+		self::enqueue($job_id);
+		self::prepare_inline();
+		self::run($job_id, true);
+		return true;
+	}
+
+	/* ------------------------------------------------------------------ watchdog */
+
+	/**
+	 * Recover jobs whose runner died (fatal error, aborted request, killed process) and left
+	 * no action behind. Only the job that is up next is looked at.
+	 */
+	public static function watchdog(bool $throttled = true): void {
+		if (!function_exists('as_get_scheduled_actions') || !class_exists('ActionScheduler') || !\ActionScheduler::is_initialized()) {
+			return;
+		}
+		if (!self::has_active()) {
+			return;
+		}
+		if ($throttled) {
+			if (get_transient(self::WATCHDOG_THROTTLE)) {
+				return;
+			}
+			set_transient(self::WATCHDOG_THROTTLE, 1, 2 * MINUTE_IN_SECONDS);
+		}
+
+		$job = self::get(self::head_id());
+		if (!$job) {
+			return;
+		}
+		$id = (int) $job['id'];
+		if (self::has_pending_action($id)) {
+			return;
+		}
+
+		if ($job['status'] === 'pending') {
+			self::enqueue($id);
+			return;
+		}
+		if (!self::is_stale($job)) {
+			return;
+		}
+		// A runner may still be busy; Action Scheduler fails actions that hang for 5 minutes.
+		$idle = time() - self::last_progress($job);
+		if ($idle < self::STUCK_AFTER && self::has_action($id, [\ActionScheduler_Store::STATUS_RUNNING])) {
+			return;
+		}
+
+		$attempts = (int) ($job['attempts'] ?? 0);
+		if ($attempts >= self::MAX_ATTEMPTS) {
+			$left = count(self::remaining($job));
+			self::fail($job, sprintf(
+				/* translators: %s: number of files left */
+				_n('Stopped repeatedly; %s file left.', 'Stopped repeatedly; %s files left.', $left, 'labelvier-media-usage'),
+				number_format_i18n($left)
+			));
+			self::kick_next();
+			return;
+		}
+		$job['attempts']         = $attempts + 1;
+		$job['last_progress_at'] = time();
+		self::save($job);
+		self::enqueue($id);
+	}
+
+	/** Mark a job failed, keeping its counters. */
+	private static function fail(array $job, string $reason): void {
+		$job['status']      = 'failed';
+		$job['errors'][]    = ['path' => '', 'reason' => $reason];
+		$job['error_count']++;
+		$job['error']       = $reason;
+		$job['finished_at'] = time();
+		$job['file_ids']    = [];
+		$job['remaining']   = [];
+		self::save($job);
+		self::unschedule((int) $job['id']);
 	}
 
 	/* ------------------------------------------------------------------ run */
 
-	public static function run(int $job_id): void {
+	public static function run(int $job_id, bool $force = false): void {
 		$job = self::get($job_id);
 		if (!$job || !in_array($job['status'], ['pending', 'running'], true)) {
+			return;
+		}
+		// Jobs run one at a time, oldest first; the next one is queued when this one ends.
+		if (!$force && self::head_id() !== $job_id) {
 			return;
 		}
 		// One runner at a time (Action Scheduler and the admin poll can overlap).
@@ -201,13 +367,9 @@ class DeleteQueue {
 			self::run_locked($job_id);
 		} catch (\Throwable $e) {
 			$job = self::get($job_id);
-			if ($job) {
-				$job['status']      = 'failed';
-				$job['errors'][]    = ['path' => '', 'reason' => $e->getMessage()];
-				$job['error_count']++;
-				$job['finished_at'] = time();
-				$job['file_ids']    = [];
-				self::save($job);
+			if ($job && in_array($job['status'], ['pending', 'running'], true)) {
+				self::fail($job, $e->getMessage());
+				self::kick_next();
 			}
 		} finally {
 			self::unlock();
@@ -224,49 +386,72 @@ class DeleteQueue {
 			return;
 		}
 
-		$job['status']     = 'running';
-		$job['note']       = '';
-		$job['started_at'] = $job['started_at'] ?: time();
+		$job['status']           = 'running';
+		$job['note']             = '';
+		$job['started_at']       = $job['started_at'] ?: time();
+		$job['last_progress_at'] = time();
+		$job['remaining']        = self::remaining($job); // jobs from older versions: start from all ids
+		$job['file_ids']         = [];
+		$job['attempts']         = (int) ($job['attempts'] ?? 0);
 		self::save($job);
 
-		$deleter  = new Deleter();
-		$total    = count($job['file_ids']);
-		$deadline = microtime(true) + self::TIME_BOX;
+		$deleter   = new Deleter();
+		$total     = (int) $job['count'];
+		$deadline  = microtime(true) + self::TIME_BOX;
+		$remaining = $job['remaining'];
 
-		while ($job['processed'] < $total) {
+		while ($remaining) {
 			if (Deleter::disabled_reason() !== '') {
 				self::wait($job);
 				return;
 			}
-			$chunk = array_slice($job['file_ids'], (int) $job['processed'], self::CHUNK);
-			$base  = ['processed' => (int) $job['processed'], 'deleted' => (int) $job['deleted'], 'freed' => (int) $job['freed']];
+			$chunk = array_slice($remaining, 0, self::CHUNK);
+			$base  = ['deleted' => (int) $job['deleted'], 'freed' => (int) $job['freed'], 'skipped' => (int) $job['skipped_count'], 'errors' => (int) $job['error_count']];
 			$last  = 0.0;
-			$size  = count($chunk);
-			$res   = $deleter->delete($chunk, (bool) $job['allow_used'], static function (array $running, int $done) use ($job_id, $base, $size, &$last): void {
-				// Live progress for the admin: at most one write per second.
-				if (microtime(true) - $last < 1) {
-					return;
+			$res   = $deleter->delete($chunk, (bool) $job['allow_used'], static function (array $running, int $done, array $handled) use ($job_id, $base, $remaining, $total, $deadline, &$last): bool {
+				// Live progress for the admin and for a resume: at most one write per second.
+				if (microtime(true) - $last >= 1) {
+					$last = microtime(true);
+					$left = array_values(array_diff($remaining, $handled));
+					self::save_progress($job_id, [
+						'remaining'     => $left,
+						'processed'     => $total - count($left),
+						'deleted'       => $base['deleted'] + $running['deleted'],
+						'freed'         => $base['freed'] + $running['freed'],
+						'skipped_count' => $base['skipped'] + count($running['skipped']),
+						'error_count'   => $base['errors'] + count($running['errors']),
+						'last_progress_at' => time(),
+					]);
 				}
-				$last = microtime(true);
-				self::save_progress($job_id, [
-					'processed' => $base['processed'] + min($done, $size),
-					'deleted'   => $base['deleted'] + $running['deleted'],
-					'freed'     => $base['freed'] + $running['freed'],
-				]);
+				return microtime(true) < $deadline;
 			});
 
 			// Deleting got disabled between the check and the call: retry the chunk later.
-			if (!$res['deleted'] && !$res['skipped'] && count($res['errors']) === 1 && $res['errors'][0]['path'] === '' && Deleter::disabled_reason() !== '') {
+			if (!$res['handled'] && Deleter::disabled_reason() !== '') {
 				self::wait($job);
 				return;
 			}
+			if (!$res['handled']) {
+				throw new \RuntimeException($res['errors'][0]['reason'] ?? __('Nothing could be processed.', 'labelvier-media-usage'));
+			}
 
-			$job['processed'] += count($chunk);
-			$job['deleted']   += $res['deleted'];
-			$job['freed']     += $res['freed'];
+			// Cancelled (or failed) while this chunk was running: leave the job alone.
+			$fresh = self::get($job_id);
+			if (!$fresh || $fresh['status'] !== 'running') {
+				return;
+			}
+			$job = $fresh;
+
+			$remaining      = array_values(array_diff($remaining, $res['handled']));
+			$job['remaining'] = $remaining;
+			$job['processed'] = $total - count($remaining);
+			$job['deleted']   = $base['deleted'] + $res['deleted'];
+			$job['freed']     = $base['freed'] + $res['freed'];
+			$job['attempts']  = 0;
+			$job['last_progress_at'] = time();
 			foreach (['skipped', 'errors'] as $key) {
 				$count_key        = $key === 'skipped' ? 'skipped_count' : 'error_count';
-				$job[$count_key] += count($res[$key]);
+				$job[$count_key]  = $base[$key] + count($res[$key]);
 				$room             = self::MAX_ITEMS - count($job[$key]);
 				if ($room > 0) {
 					$job[$key] = array_merge($job[$key], array_slice($res[$key], 0, $room));
@@ -274,10 +459,8 @@ class DeleteQueue {
 			}
 			self::save($job);
 
-			if ($job['processed'] < $total && microtime(true) >= $deadline) {
-				if (!self::has_pending_action($job_id)) {
-					self::enqueue($job_id);
-				}
+			if ($remaining && microtime(true) >= $deadline) {
+				self::enqueue($job_id);
 				return;
 			}
 		}
@@ -285,10 +468,10 @@ class DeleteQueue {
 		$job['status']      = 'done';
 		$job['finished_at'] = time();
 		$job['file_ids']    = [];
+		$job['remaining']   = [];
 		self::save($job);
-		if (function_exists('as_unschedule_all_actions')) {
-			as_unschedule_all_actions(self::HOOK, [$job_id], Scheduler::GROUP);
-		}
+		self::unschedule($job_id);
+		self::kick_next();
 	}
 
 	/** Deleting is disabled (index running): keep the job pending and retry in 5 minutes. */
@@ -321,6 +504,14 @@ class DeleteQueue {
 		}
 	}
 
+	/** Let the request finish its job when the browser goes away (page reload, closed tab). */
+	public static function prepare_inline(): void {
+		ignore_user_abort(true);
+		if (function_exists('set_time_limit')) {
+			@set_time_limit(self::TIME_BOX + 40); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+		}
+	}
+
 	/**
 	 * Process one due delete action in the current request (admin status poll), so jobs
 	 * also run where the Action Scheduler loopback request is blocked. A job that waits for
@@ -330,6 +521,8 @@ class DeleteQueue {
 		if (!function_exists('as_get_scheduled_actions') || !class_exists('ActionScheduler')) {
 			return;
 		}
+		self::prepare_inline();
+		self::watchdog(false);
 		$ids = as_get_scheduled_actions([
 			'hook'         => self::HOOK,
 			'group'        => Scheduler::GROUP,
@@ -347,11 +540,9 @@ class DeleteQueue {
 		if (Deleter::disabled_reason() !== '') {
 			return;
 		}
-		foreach (self::active_jobs() as $job) {
-			if ($job['status'] === 'pending' && $job['note'] !== '') {
-				self::run((int) $job['id']);
-				return;
-			}
+		$head = self::get(self::head_id());
+		if ($head && $head['status'] === 'pending' && $head['note'] !== '') {
+			self::run((int) $head['id']);
 		}
 	}
 }

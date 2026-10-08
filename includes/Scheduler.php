@@ -287,6 +287,11 @@ class Scheduler {
 		if (!self::is_supported()) {
 			return;
 		}
+		// Keep going when the browser goes away (page reload, closed tab).
+		ignore_user_abort(true);
+		if (function_exists('set_time_limit')) {
+			@set_time_limit(60); // phpcs:ignore WordPress.PHP.NoSilencedErrors
+		}
 		self::watchdog();
 		if (!function_exists('as_get_scheduled_actions') || !class_exists('ActionScheduler')) {
 			return;
