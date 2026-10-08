@@ -20,6 +20,7 @@ class Plugin {
 			load_plugin_textdomain('labelvier-media-usage', false, dirname(plugin_basename(LVMU_FILE)) . '/languages');
 		});
 		Schema::maybe_install();
+		Updater::register();
 		if (is_multisite()) {
 			add_action('admin_notices', [self::class, 'multisite_notice']);
 			add_action('network_admin_notices', [self::class, 'multisite_notice']);

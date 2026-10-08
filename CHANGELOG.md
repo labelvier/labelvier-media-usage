@@ -4,6 +4,13 @@ All notable changes to this plugin are documented in this file. The format is ba
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the plugin uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-10-08
+
+### Added
+- Automatic updates from GitHub releases (with the changelog in the "View version details"
+  screen). Disable with the `lvmu_update_checker_enabled` filter.
+- Public README with screenshot and a LICENSE file (GPL-2.0-or-later).
+
 ## [0.2.2] - 2026-10-08
 
 ### Fixed

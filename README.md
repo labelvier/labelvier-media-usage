@@ -1,12 +1,66 @@
 # Label Vier Media Usage
 
-Indexes every file in `wp-content/uploads`, links files to Media Library items and checks
-the whole database for references, so you can find and bulk delete unused and orphaned
-files (including zips, sql dumps and logs).
+Find out what is really in your `wp-content/uploads` folder, what your site still uses and
+what can be deleted safely.
+
+![Label Vier Media Usage overview](.github/screenshot.png)
+
+## The problem
+
+Media Library size plugins only look at attachment metadata. They miss everything in
+`uploads` that is not (or no longer) a Media Library item: leftover zips, sql dumps and
+logs, orphaned thumbnails, WebP copies, optimizer backups and copies of whole upload
+folders after a migration. They also cannot tell whether a file is still referenced.
+
+**Label Vier Media Usage indexes every file in the uploads folder, links files to Media
+Library items and checks the whole database for real references.** The result is an
+overview per category with the size you can reclaim, and a safe way to bulk delete.
+
+## Features
+
+- **Overview by category**: media items, originals, generated sizes, WebP copies, loose
+  files, backups and copies, protected files. Each with a count, size and how much is unused.
+- **Usage detection** across the whole database (every table with the WordPress prefix):
+  post content and blocks, galleries, featured images, ACF image/file/gallery fields,
+  page builder data, widgets and options, site icon and logo, plus references from theme
+  files and from text files in uploads (css, html, js, svg), so a font or image that is
+  only used by a stylesheet counts as used.
+- **Originals**: the full size upload WordPress keeps next to `-scaled` is tracked
+  separately and only counts as used when it is referenced directly.
+- **WebP copies** made by optimizer plugins (`foo.jpg.webp`, `foo.webp`).
+- **Backups and copies**: optimizer backup folders and nested copies of the uploads
+  structure are recognised and flagged.
+- **Protected files** (server configuration, folder protection, dotfiles and plugin data)
+  can never be deleted.
+- **Suspicious PHP and script files** in uploads are flagged "Check this file".
+- **Scheduled bulk deletes** that run in the background, one at a time, with progress,
+  cancel, resume after an aborted request and a watchdog for stalled jobs.
+- **Nightly index** at 03:00 (site time) through Action Scheduler.
+- **WP-CLI** commands for indexing and reporting.
+- **Dutch translation** (nl_NL) included.
+
+## Requirements
+
+- PHP 8.1 or higher
+- WordPress 6.4 or higher
+- A single site installation. Multisite is not supported (files of other sites would be
+  reported as unused), the plugin disables itself and shows a notice.
+
+## Installation
+
+1. Download `labelvier-media-usage.zip` from the
+   [latest release](https://github.com/labelvier/labelvier-media-usage/releases/latest).
+2. In wp-admin go to **Plugins → Add New → Upload Plugin**, upload the zip and activate.
+
+Do not use the "Source code" archives of GitHub: they do not contain the release build.
+
+Updates are installed automatically through the normal WordPress updates screen: the
+plugin checks the GitHub releases of this repository and shows the changelog in
+"View version x details". To turn this off, see the `lvmu_update_checker_enabled` filter.
 
 ## Usage
 
-**Media → Media Usage** in wp-admin.
+Open **Media → Media Usage** in wp-admin (requires the `manage_options` capability).
 
 - **Index now** starts an index run through Action Scheduler. The page shows progress
   and reloads when done. While the page is open it also processes the queue itself, so
@@ -107,6 +161,16 @@ checked. Files with an unknown usage are never deleted.
 Filters: `lvmu_copy_folders` (array of folder names, fnmatch globs allowed) and
 `lvmu_protected_patterns` (see above). The rules live in `includes/FileRules.php`.
 
+## Safety
+
+- Protected files are never deleted, see [Protected and suspicious files](#protected-and-suspicious-files).
+- Files with an unknown usage are never deleted.
+- Files marked as used are only deleted when "Also delete files marked as used" is checked.
+- Only files from the latest complete index are deleted, and before a file is deleted the
+  plugin checks again that it is not referenced since that index run.
+- Backups and copies and PHP/script files need an extra confirmation.
+- Always make a backup before a large bulk delete.
+
 ## WP-CLI
 
 ```bash
@@ -117,18 +181,56 @@ wp lvmu summary
 wp lvmu list --orphaned --usage_status=unused --limit=50
 ```
 
+`wp lvmu summary --format=json` prints the full summary including the reclaimable size.
+
+## Hooks
+
+| Hook | Type | Purpose |
+|---|---|---|
+| `lvmu_update_checker_enabled` | filter | Return `false` to disable update checks against GitHub (default `true`). |
+| `lvmu_protected_patterns` | filter | Extend the protected rules (keys `names`, `extensions` and `folders`). |
+| `lvmu_copy_folders` | filter | Folder names (fnmatch globs allowed) that are treated as optimizer backups. Default `['ShortpixelBackups']`. |
+| `lvmu_ref_scan_skip_tables` | filter | Regex list of tables the usage scan skips. |
+| `lvmu_ref_scan_error_tolerant_tables` | filter | Regex list of tables for which unreadable rows do not fail the scan. |
+| `lvmu_deleted_files` | action | Fires after a delete run with the result (deleted, freed, skipped). |
+
+Example:
+
+```php
+add_filter('lvmu_protected_patterns', function (array $patterns): array {
+	$patterns['folders'][] = 'my-plugin-cache';
+	return $patterns;
+});
+```
+
 ## Development
 
-Action Scheduler is bundled with composer in `vendor/` (committed).
+This plugin is developed in the Label Vier WordPress starterkit repository, in
+`wp-content/plugins/labelvier-media-usage/`. This repository is a read-only mirror of
+that folder (`git subtree split`), so open issues here but expect fixes to arrive through
+the starterkit. Action Scheduler and Plugin Update Checker are bundled with composer in
+`vendor/` (committed).
 
-Build: `npm run build` in the repository root copies a clean plugin to
-`build/labelvier-media-usage/` and creates `build/labelvier-media-usage-<version>.zip`
-(version from the plugin header), ready for Plugins → Add New → Upload. The theme build
-moved to `npm run build:theme` (used by the deploy scripts).
+In the starterkit root:
 
-Test data:
-`bin/seed-media-usage.sh` in the repository root, expected results in
-`test/fixtures/EXPECTED.md`.
+- `npm run build` copies a clean plugin to `build/labelvier-media-usage/` and creates
+  `build/labelvier-media-usage-<version>.zip` (version from the plugin header). The
+  `.github` folder, composer files and dotfiles are left out of the zip.
+- `npm run i18n` and `npm run i18n:check` maintain the translations, see below.
+- Test data: `bin/seed-media-usage.sh`, expected results in `test/fixtures/EXPECTED.md`.
+
+### Releasing
+
+1. Bump `Version` in the plugin header and `LVMU_VERSION` in `labelvier-media-usage.php`
+   and add a `## [x.y.z] - date` section to `CHANGELOG.md`. Commit everything.
+2. Run `npm run release:plugin -- --dry-run` to check, then `npm run release:plugin`.
+
+The script verifies the version and changelog, runs the translation check and the build,
+requires a clean working tree, pushes the plugin folder to the `main` branch of
+`labelvier/labelvier-media-usage` (`git subtree split`), tags `vX.Y.Z` and creates the GitHub
+release with `labelvier-media-usage.zip` attached. The release notes are the matching
+section of `CHANGELOG.md`; installed sites show them in the update details screen.
+Environment: `PLUGIN_REPO` (remote URL), `FORCE=1` (force push). Needs the `gh` CLI.
 
 ## Translations
 
@@ -144,3 +246,7 @@ translated to Dutch (nl_NL). The source language is English.
 
 `npm run build` refuses to build when translations are incomplete
 (override with `SKIP_I18N_CHECK=1`).
+
+## License
+
+GPL-2.0-or-later, see [LICENSE](LICENSE).
