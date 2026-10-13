@@ -1005,7 +1005,7 @@ msgstr ""
 msgid "Plugins"
 msgstr ""
 
-msgid "Size of the site: about %s"
+msgid "Size of the site: %s"
 msgstr ""
 
 msgid "Including %s for WordPress and the theme."

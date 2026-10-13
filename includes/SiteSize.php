@@ -11,9 +11,9 @@ namespace LabelvierMediaUsage;
 class SiteSize {
 
 	/**
-	 * Fixed allowance for WordPress core, themes and other files, in bytes (200 MB).
+	 * Fixed allowance for WordPress core, themes and other files, in bytes (300 MB).
 	 */
-	public const BASE_ALLOWANCE = 200 * 1024 * 1024;
+	public const BASE_ALLOWANCE = 300 * 1024 * 1024;
 
 	/**
 	 * Measure the site.

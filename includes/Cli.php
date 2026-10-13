@@ -194,7 +194,7 @@ class Cli {
 
 	/**
 	 * Show how much disk space the site takes: uploads, database and plugins plus a fixed
-	 * 200 MB allowance for WordPress core and themes. Sizes are in bytes in json format.
+	 * 300 MB allowance for WordPress core and themes. Sizes are in bytes in json format.
 	 *
 	 * ## OPTIONS
 	 *

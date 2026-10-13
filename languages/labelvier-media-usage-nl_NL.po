@@ -1005,8 +1005,8 @@ msgstr "Database"
 msgid "Plugins"
 msgstr "Plugins"
 
-msgid "Size of the site: about %s"
-msgstr "Grootte van de site: ongeveer %s"
+msgid "Size of the site: %s"
+msgstr "Grootte van de site: %s"
 
 msgid "Including %s for WordPress and the theme."
 msgstr "Inclusief %s voor WordPress en het thema."

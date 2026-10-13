@@ -179,14 +179,14 @@ wp lvmu index                 # queue a run in Action Scheduler
 wp lvmu status
 wp lvmu summary
 wp lvmu list --orphaned --usage_status=unused --limit=50
-wp lvmu size                  # uploads + database + plugins + 200 MB for core and themes
+wp lvmu size                  # uploads + database + plugins + 300 MB for core and themes
 ```
 
 `wp lvmu summary --format=json` prints the full summary including the reclaimable size.
 
 `wp lvmu size --format=json` prints the size of the site in bytes:
 `uploads` (the whole uploads folder), `database` (all tables with the WordPress prefix),
-`plugins`, `base` (a fixed 200 MB for core and themes) and `total`. The Label Vier
+`plugins`, `base` (a fixed 300 MB for core and themes) and `total`. The Label Vier
 dashboard uses this to show storage usage per site.
 
 ## Hooks
@@ -197,7 +197,7 @@ dashboard uses this to show storage usage per site.
 | `lvmu_protected_patterns` | filter | Extend the protected rules (keys `names`, `extensions` and `folders`). |
 | `lvmu_copy_folders` | filter | Folder names (fnmatch globs allowed) that are treated as optimizer backups. Default `['ShortpixelBackups']`. |
 | `lvmu_ref_scan_skip_tables` | filter | Regex list of tables the usage scan skips. |
-| `lvmu_site_size_base_allowance` | filter | Bytes added to the measured size for core and themes in `wp lvmu size` (default 200 MB). |
+| `lvmu_site_size_base_allowance` | filter | Bytes added to the measured size for core and themes in `wp lvmu size` (default 300 MB). |
 | `lvmu_ref_scan_error_tolerant_tables` | filter | Regex list of tables for which unreadable rows do not fail the scan. |
 | `lvmu_deleted_files` | action | Fires after a delete run with the result (deleted, freed, skipped). |
 

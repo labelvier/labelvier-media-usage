@@ -8,10 +8,10 @@ All notable changes to this plugin are documented in this file. The format is ba
 
 ### Added
 - `wp lvmu size` command: size of the uploads folder, the database and the plugins, plus
-  a fixed 200 MB allowance for core and themes (`lvmu_site_size_base_allowance` filter).
+  a fixed 300 MB allowance for core and themes (`lvmu_site_size_base_allowance` filter).
   With `--format=json` the sizes are in bytes, for the Label Vier dashboard.
 - Size of the site on the Media Usage page: media, database and plugins (sizes only), plus
-  200 MB for WordPress and the theme. Measured at most once an hour.
+  300 MB for WordPress and the theme. Measured at most once an hour.
 
 ### Changed
 - Protected files (server configuration such as `.htaccess`, dotfiles and plugin data) are

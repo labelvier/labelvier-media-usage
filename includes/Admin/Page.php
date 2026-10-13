@@ -777,7 +777,7 @@ class Page {
 		echo '<div class="lvmu-box lvmu-site-size">';
 		echo '<h2 class="lvmu-overview__title">' . esc_html(sprintf(
 			/* translators: %s: total size of the site */
-			__('Size of the site: about %s', 'labelvier-media-usage'),
+			__('Size of the site: %s', 'labelvier-media-usage'),
 			self::format_size_mb($size['total'])
 		)) . '</h2>';
 		echo '<p>';
