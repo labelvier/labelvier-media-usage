@@ -55,6 +55,7 @@ class SiteSize {
 
 	/**
 	 * Total size of all files below a directory, in bytes. Symlinks are not followed.
+ * Never throws: unreadable or vanished entries are skipped.
 	 *
 	 * @param string $dir
 	 * @return int
@@ -64,17 +65,25 @@ class SiteSize {
 			return 0;
 		}
 
-		$size     = 0;
-		$iterator = new \RecursiveIteratorIterator(
-			new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
-			\RecursiveIteratorIterator::LEAVES_ONLY,
-			\RecursiveIteratorIterator::CATCH_GET_CHILD
-		);
+		$size = 0;
+		try {
+			$iterator = new \RecursiveIteratorIterator(
+				new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
+				\RecursiveIteratorIterator::LEAVES_ONLY,
+				\RecursiveIteratorIterator::CATCH_GET_CHILD
+			);
 
-		foreach ($iterator as $file) {
-			if ($file->isFile() && !$file->isLink()) {
-				$size += $file->getSize();
+			foreach ($iterator as $file) {
+				try {
+					if ($file->isFile() && !$file->isLink()) {
+						$size += (int) $file->getSize();
+					}
+				} catch (\RuntimeException $e) {
+					continue; // Unreadable or removed while measuring.
+				}
 			}
+		} catch (\UnexpectedValueException | \RuntimeException $e) {
+			// Unreadable directory: return what was measured so far.
 		}
 
 		return $size;
