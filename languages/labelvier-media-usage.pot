@@ -1002,13 +1002,10 @@ msgstr ""
 msgid "Database"
 msgstr ""
 
-msgid "Plugins"
+msgid "Plugins and system"
 msgstr ""
 
 msgid "Size of the site: %s"
-msgstr ""
-
-msgid "Including %s for WordPress and the theme."
 msgstr ""
 
 msgid "The size of the site is being measured."

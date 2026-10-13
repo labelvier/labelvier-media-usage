@@ -777,7 +777,8 @@ class Page {
 		$parts = [
 			__('Media', 'labelvier-media-usage')    => $size['uploads'],
 			__('Database', 'labelvier-media-usage') => $size['database'],
-			__('Plugins', 'labelvier-media-usage')  => $size['plugins'],
+			// The fixed allowance for WordPress and the theme counts as system.
+			__('Plugins and system', 'labelvier-media-usage') => (int) $size['plugins'] + (int) $size['base'],
 		];
 
 		echo '<h2 class="lvmu-overview__title">' . esc_html(sprintf(
@@ -792,20 +793,18 @@ class Page {
 		}
 		echo implode(' &middot; ', $items); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '</p>';
-		$description = sprintf(
-			/* translators: %s: fixed size added for WordPress and the theme */
-			__('Including %s for WordPress and the theme.', 'labelvier-media-usage'),
-			self::format_size_mb((int) $size['base'])
-		);
-		$measured = SiteSize::measured_at($size);
+		$description = '';
+		$measured    = SiteSize::measured_at($size);
 		if ($measured) {
-			$description .= ' ' . sprintf(
+			$description = sprintf(
 				/* translators: %s: relative time, like "2 hours" */
 				__('Measured %s ago.', 'labelvier-media-usage'),
 				human_time_diff($measured)
 			);
 		}
-		echo '<p class="description">' . esc_html($description) . '</p>';
+		if ($description !== '') {
+			echo '<p class="description">' . esc_html($description) . '</p>';
+		}
 		echo '</div>';
 	}
 
