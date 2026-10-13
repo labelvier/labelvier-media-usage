@@ -191,4 +191,41 @@ class Cli {
 			\WP_CLI::log(sprintf('%d matching files, %s in total.', $result['total'], size_format($result['total_size'], 2)));
 		}
 	}
+
+	/**
+	 * Show how much disk space the site takes: uploads, database and plugins plus a fixed
+	 * 200 MB allowance for WordPress core and themes. Sizes are in bytes in json format.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--format=<format>]
+	 * : Output format.
+	 * ---
+	 * default: table
+	 * options:
+	 *   - table
+	 *   - json
+	 * ---
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp lvmu size --format=json
+	 *
+	 * @param array $args
+	 * @param array $assoc_args
+	 */
+	public function size($args, $assoc_args): void {
+		$size = SiteSize::measure();
+
+		if (($assoc_args['format'] ?? 'table') === 'json') {
+			\WP_CLI::line(wp_json_encode($size));
+			return;
+		}
+
+		$rows = [];
+		foreach (['uploads', 'database', 'plugins', 'base', 'total'] as $key) {
+			$rows[] = ['part' => $key, 'size' => size_format($size[$key], 2)];
+		}
+		\WP_CLI\Utils\format_items('table', $rows, ['part', 'size']);
+	}
 }

@@ -4,6 +4,13 @@ All notable changes to this plugin are documented in this file. The format is ba
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the plugin uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- `wp lvmu size` command: size of the uploads folder, the database and the plugins, plus
+  a fixed 200 MB allowance for core and themes (`lvmu_site_size_base_allowance` filter).
+  With `--format=json` the sizes are in bytes, for the Label Vier dashboard.
+
 ## [0.3.0] - 2026-10-08
 
 ### Added
