@@ -68,7 +68,6 @@ class FilesListTable extends \WP_List_Table {
 			'all'             => [__('All', 'labelvier-media-usage'), []],
 			'unused'          => [__('Unused', 'labelvier-media-usage'), ['usage_status' => 'unused']],
 			'orphaned'        => [__('Orphaned', 'labelvier-media-usage'), ['orphaned' => 1]],
-			'protected'       => [__('Protected', 'labelvier-media-usage'), ['special' => 'protected']],
 			'copies'          => [__('Backups and copies', 'labelvier-media-usage'), ['category' => 'copy']],
 			'suspicious'      => [__('To check', 'labelvier-media-usage'), ['special' => 'suspicious']],
 			'originals'       => [__('Originals', 'labelvier-media-usage'), ['file_role' => 'original']],

@@ -995,3 +995,18 @@ msgstr "In de wachtrij — start als de taak hiervoor klaar is: %1$s verwijderen
 #: includes/Admin/Page.php:621
 msgid "Stalled — will resume automatically within a few minutes: deleting %1$s, %2$s of %3$s done"
 msgstr "Gestopt — wordt binnen een paar minuten automatisch hervat: %1$s verwijderen, %2$s van %3$s klaar"
+
+msgid "Media"
+msgstr "Media"
+
+msgid "Database"
+msgstr "Database"
+
+msgid "Plugins"
+msgstr "Plugins"
+
+msgid "Size of the site: about %s"
+msgstr "Grootte van de site: ongeveer %s"
+
+msgid "Including %s for WordPress and the theme."
+msgstr "Inclusief %s voor WordPress en het thema."

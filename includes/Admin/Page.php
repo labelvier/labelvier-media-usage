@@ -7,6 +7,7 @@ use LabelvierMediaUsage\Deleter;
 use LabelvierMediaUsage\FileRepository;
 use LabelvierMediaUsage\ScanState;
 use LabelvierMediaUsage\Scheduler;
+use LabelvierMediaUsage\SiteSize;
 
 /**
  * Media > Media Usage admin screen: summary, indexing status and file list.
@@ -497,6 +498,7 @@ class Page {
 			echo '<div class="notice notice-warning inline lvmu-delete-disabled"><p>' . esc_html($blocked) . '</p></div>';
 		}
 		self::render_status($state, $summary);
+		self::render_site_size();
 		if ($summary['total']['count'] > 0) {
 			self::render_summary($summary, $repo, $filters);
 		}
@@ -755,6 +757,44 @@ class Page {
 		return '<td' . $cls . '><a href="' . esc_url(self::list_url($args)) . '" aria-label="' . esc_attr($label . ': ' . number_format_i18n($st['count']) . ', ' . self::format_size_mb($st['size'])) . '"' . ($current ? ' aria-current="page"' : '') . '>' . $text . '</a></td>';
 	}
 
+	/**
+	 * Size of the database and the plugins next to the media, plus an estimate for the whole site.
+	 * Measured at most once an hour; only sizes are shown, not the files themselves.
+	 */
+	private static function render_site_size(): void {
+		$size = get_transient('lvmu_site_size');
+		if (!is_array($size)) {
+			$size = SiteSize::measure();
+			set_transient('lvmu_site_size', $size, HOUR_IN_SECONDS);
+		}
+
+		$parts = [
+			__('Media', 'labelvier-media-usage')    => $size['uploads'],
+			__('Database', 'labelvier-media-usage') => $size['database'],
+			__('Plugins', 'labelvier-media-usage')  => $size['plugins'],
+		];
+
+		echo '<div class="lvmu-box lvmu-site-size">';
+		echo '<h2 class="lvmu-overview__title">' . esc_html(sprintf(
+			/* translators: %s: total size of the site */
+			__('Size of the site: about %s', 'labelvier-media-usage'),
+			self::format_size_mb($size['total'])
+		)) . '</h2>';
+		echo '<p>';
+		$items = [];
+		foreach ($parts as $label => $bytes) {
+			$items[] = '<strong>' . esc_html($label) . '</strong> ' . esc_html(self::format_size_mb((int) $bytes));
+		}
+		echo implode(' &middot; ', $items); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '</p>';
+		echo '<p class="description">' . esc_html(sprintf(
+			/* translators: %s: fixed size added for WordPress and the theme */
+			__('Including %s for WordPress and the theme.', 'labelvier-media-usage'),
+			self::format_size_mb((int) $size['base'])
+		)) . '</p>';
+		echo '</div>';
+	}
+
 	private static function render_summary(array $s, ?FileRepository $repo = null, array $filters = []): void {
 		$repo    = $repo ?? new FileRepository();
 		$cats    = $repo->category_summary();
@@ -793,6 +833,9 @@ class Page {
 		echo '<thead><tr><th scope="col">' . esc_html__('Category', 'labelvier-media-usage') . '</th><th scope="col" class="lvmu-num">' . esc_html__('Total', 'labelvier-media-usage')
 			. '</th><th scope="col" class="lvmu-num">' . esc_html__('Used', 'labelvier-media-usage') . '</th><th scope="col" class="lvmu-num">' . esc_html__('Unused', 'labelvier-media-usage') . '</th></tr></thead><tbody>';
 		foreach (self::category_defs() as $key => [$label, $hint]) {
+			if (!isset($cats[$key])) {
+				continue; // Protected files are not shown.
+			}
 			$c        = $cats[$key];
 			$base     = ['category' => $key];
 			$row_cur  = $is_cur($base);

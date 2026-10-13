@@ -288,6 +288,9 @@ class FileRepository {
 		$empty = ['count' => 0, 'size' => 0];
 		$out   = [];
 		foreach (self::CATEGORIES as $c) {
+			if ($c === 'protected') {
+				continue; // Not media, not shown in the overview.
+			}
 			$out[$c] = ['total' => $empty, 'used' => $empty, 'unused' => $empty];
 		}
 		$case = "CASE WHEN file_flag = 'protected' THEN 'protected' WHEN file_flag = 'copy' THEN 'copy' WHEN file_role = 'main' THEN 'media' ELSE file_role END";
@@ -352,6 +355,9 @@ class FileRepository {
 			$where[]  = 'file_flag = %s';
 			$params[] = $args['special'];
 		}
+		if (($args['special'] ?? '') !== 'protected') {
+			$where[] = "file_flag <> 'protected'"; // Only media is listed; protected files are never deleted anyway.
+		}
 		if (!empty($args['min_size'])) {
 			$where[]  = 'size >= %d';
 			$params[] = (int) $args['min_size'];
@@ -374,15 +380,16 @@ class FileRepository {
 		global $wpdb;
 		$table = Schema::files_table();
 
+		// Protected files (server configuration, dotfiles, plugin data) are not media and stay out of the overview.
 		$group = static function (string $column) use ($wpdb, $table): array {
 			$out = [];
-			foreach ($wpdb->get_results("SELECT {$column} AS k, COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table} GROUP BY {$column}") as $row) {
+			foreach ($wpdb->get_results("SELECT {$column} AS k, COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table} WHERE file_flag <> 'protected' GROUP BY {$column}") as $row) {
 				$out[$row->k] = ['count' => (int) $row->c, 'size' => (int) $row->s];
 			}
 			return $out;
 		};
 
-		$total    = $wpdb->get_row("SELECT COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table}");
+		$total    = $wpdb->get_row("SELECT COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table} WHERE file_flag <> 'protected'");
 
 		return [
 			'total'    => ['count' => (int) $total->c, 'size' => (int) $total->s],

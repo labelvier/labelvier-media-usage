@@ -995,3 +995,18 @@ msgstr ""
 #: includes/Usage/UsageResolver.php:263
 msgid "Resolving usage failed: "
 msgstr ""
+
+msgid "Media"
+msgstr ""
+
+msgid "Database"
+msgstr ""
+
+msgid "Plugins"
+msgstr ""
+
+msgid "Size of the site: about %s"
+msgstr ""
+
+msgid "Including %s for WordPress and the theme."
+msgstr ""
