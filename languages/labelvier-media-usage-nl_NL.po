@@ -1010,3 +1010,10 @@ msgstr "Grootte van de site: %s"
 
 msgid "Including %s for WordPress and the theme."
 msgstr "Inclusief %s voor WordPress en het thema."
+
+msgid "The size of the site is being measured."
+msgstr "We meten de grootte van de site. Kom straks even terug voor het resultaat."
+
+#. translators: %s: relative time, like "2 hours"
+msgid "Measured %s ago."
+msgstr "%s geleden gemeten."

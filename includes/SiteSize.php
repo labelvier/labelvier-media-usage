@@ -7,6 +7,10 @@ namespace LabelvierMediaUsage;
  *
  * WordPress core and the theme are not measured but covered by a fixed
  * allowance, which gives a good estimate of the total size of the site.
+ *
+ * The admin page never measures itself: the last measurement is stored in an option and
+ * refreshed in the background through Action Scheduler (after every index run and when
+ * the stored measurement is missing or older than a day).
  */
 class SiteSize {
 
@@ -14,6 +18,65 @@ class SiteSize {
 	 * Fixed allowance for WordPress core, themes and other files, in bytes (300 MB).
 	 */
 	public const BASE_ALLOWANCE = 300 * 1024 * 1024;
+
+	/** Option with the last measurement (see measure()). */
+	public const OPTION = 'lvmu_site_size';
+
+	/** Action Scheduler hook that measures and stores the size. */
+	public const HOOK = 'lvmu_measure_site_size';
+
+	/** A stored measurement older than this is refreshed, in seconds (24 hours). */
+	public const MAX_AGE = 24 * 60 * 60;
+
+	public static function register(): void {
+		add_action(self::HOOK, [self::class, 'measure_and_store']);
+	}
+
+	/**
+	 * Measure the site and store the result as the last measurement.
+	 *
+	 * @return array{uploads: int, database: int, plugins: int, base: int, total: int, measured_at: string}
+	 */
+	public static function measure_and_store(): array {
+		$size = self::measure();
+		update_option(self::OPTION, $size, false);
+		return $size;
+	}
+
+	/**
+	 * The last stored measurement, or null when the site has not been measured yet.
+	 *
+	 * @return array{uploads: int, database: int, plugins: int, base: int, total: int, measured_at: string}|null
+	 */
+	public static function stored(): ?array {
+		$size = get_option(self::OPTION);
+		return is_array($size) && isset($size['total'], $size['measured_at']) ? $size : null;
+	}
+
+	/** Unix time of a measurement (0 when unknown). */
+	public static function measured_at(array $size): int {
+		$time = strtotime((string) ($size['measured_at'] ?? ''));
+		return $time ? (int) $time : 0;
+	}
+
+	public static function is_stale(?array $size): bool {
+		return $size === null || self::measured_at($size) < time() - self::MAX_AGE;
+	}
+
+	/**
+	 * Queue a background measurement unless one is already pending or running.
+	 *
+	 * @return bool Whether a measurement is queued (now or before).
+	 */
+	public static function schedule(): bool {
+		if (!function_exists('as_enqueue_async_action') || !function_exists('as_has_scheduled_action') || !class_exists('ActionScheduler') || !\ActionScheduler::is_initialized()) {
+			return false;
+		}
+		if (as_has_scheduled_action(self::HOOK, null, Scheduler::GROUP)) {
+			return true;
+		}
+		return (bool) as_enqueue_async_action(self::HOOK, [], Scheduler::GROUP);
+	}
 
 	/**
 	 * Measure the site.

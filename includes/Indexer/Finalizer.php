@@ -5,9 +5,11 @@ namespace LabelvierMediaUsage\Indexer;
 use LabelvierMediaUsage\FileRepository;
 use LabelvierMediaUsage\ScanState;
 use LabelvierMediaUsage\Schema;
+use LabelvierMediaUsage\SiteSize;
 
 /**
- * Phase 5: removes stale rows, stores the summary and marks the scan as done.
+ * Phase 5: removes stale rows, stores the summary, marks the scan as done and queues a
+ * new measurement of the site size.
  */
 class Finalizer implements PhaseInterface {
 
@@ -30,6 +32,7 @@ class Finalizer implements PhaseInterface {
 			'phase'       => '',
 			'finished_at' => time(),
 		]);
+		SiteSize::schedule();
 		return true;
 	}
 }

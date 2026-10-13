@@ -759,13 +759,20 @@ class Page {
 
 	/**
 	 * Size of the database and the plugins next to the media, plus an estimate for the whole site.
-	 * Measured at most once an hour; only sizes are shown, not the files themselves.
+	 * Shows the last stored measurement and queues a background measurement when there is none
+	 * or it is older than a day. Only sizes are shown, not the files themselves.
 	 */
 	private static function render_site_size(): void {
-		$size = get_transient('lvmu_site_size');
-		if (!is_array($size)) {
-			$size = SiteSize::measure();
-			set_transient('lvmu_site_size', $size, HOUR_IN_SECONDS);
+		$size = SiteSize::stored();
+		if (SiteSize::is_stale($size) && SiteSize::schedule()) {
+			self::kick_runner();
+		}
+
+		echo '<div class="lvmu-box lvmu-site-size">';
+		if ($size === null) {
+			echo '<p>' . esc_html__('The size of the site is being measured.', 'labelvier-media-usage') . '</p>';
+			echo '</div>';
+			return;
 		}
 
 		$parts = [
@@ -774,11 +781,10 @@ class Page {
 			__('Plugins', 'labelvier-media-usage')  => $size['plugins'],
 		];
 
-		echo '<div class="lvmu-box lvmu-site-size">';
 		echo '<h2 class="lvmu-overview__title">' . esc_html(sprintf(
 			/* translators: %s: total size of the site */
 			__('Size of the site: %s', 'labelvier-media-usage'),
-			self::format_size_mb($size['total'])
+			self::format_size_mb((int) $size['total'])
 		)) . '</h2>';
 		echo '<p>';
 		$items = [];
@@ -787,11 +793,20 @@ class Page {
 		}
 		echo implode(' &middot; ', $items); // phpcs:ignore WordPress.Security.EscapeOutput
 		echo '</p>';
-		echo '<p class="description">' . esc_html(sprintf(
+		$description = sprintf(
 			/* translators: %s: fixed size added for WordPress and the theme */
 			__('Including %s for WordPress and the theme.', 'labelvier-media-usage'),
 			self::format_size_mb((int) $size['base'])
-		)) . '</p>';
+		);
+		$measured = SiteSize::measured_at($size);
+		if ($measured) {
+			$description .= ' ' . sprintf(
+				/* translators: %s: relative time, like "2 hours" */
+				__('Measured %s ago.', 'labelvier-media-usage'),
+				human_time_diff($measured)
+			);
+		}
+		echo '<p class="description">' . esc_html($description) . '</p>';
 		echo '</div>';
 	}
 

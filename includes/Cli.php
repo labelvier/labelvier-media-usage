@@ -195,6 +195,7 @@ class Cli {
 	/**
 	 * Show how much disk space the site takes: uploads, database and plugins plus a fixed
 	 * 300 MB allowance for WordPress core and themes. Sizes are in bytes in json format.
+	 * Always measures live and stores the result for the Media Usage page.
 	 *
 	 * ## OPTIONS
 	 *
@@ -215,7 +216,7 @@ class Cli {
 	 * @param array $assoc_args
 	 */
 	public function size($args, $assoc_args): void {
-		$size = SiteSize::measure();
+		$size = SiteSize::measure_and_store();
 
 		if (($assoc_args['format'] ?? 'table') === 'json') {
 			\WP_CLI::line(wp_json_encode($size));

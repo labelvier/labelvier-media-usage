@@ -1010,3 +1010,10 @@ msgstr ""
 
 msgid "Including %s for WordPress and the theme."
 msgstr ""
+
+msgid "The size of the site is being measured."
+msgstr ""
+
+#. translators: %s: relative time, like "2 hours"
+msgid "Measured %s ago."
+msgstr ""
