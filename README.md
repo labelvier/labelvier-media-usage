@@ -18,8 +18,13 @@ overview per category with the size you can reclaim, and a safe way to bulk dele
 
 ## Features
 
+- **Media only in wp-admin**: images, video, audio and documents. Other files in uploads
+  (archives, database dumps, logs, code) and protected files are not shown to the client;
+  WP-CLI still lists all file types.
+- **Size of the site**: media, database and plugins plus 300 MB for WordPress and the theme,
+  measured in the background. Only sizes are shown, not the database or plugin files.
 - **Overview by category**: media items, originals, generated sizes, WebP copies, loose
-  files, backups and copies, protected files. Each with a count, size and how much is unused.
+  files, backups and copies. Each with a count, size and how much is unused.
 - **Usage detection** across the whole database (every table with the WordPress prefix):
   post content and blocks, galleries, featured images, ACF image/file/gallery fields,
   page builder data, widgets and options, site icon and logo, plus references from theme
@@ -174,6 +179,7 @@ Filters: `lvmu_copy_folders` (array of folder names, fnmatch globs allowed) and
 ## WP-CLI
 
 ```bash
+# WP-CLI shows every file type in uploads (wp-admin shows media only); protected files are never listed.
 wp lvmu index --sync          # run a full index inline
 wp lvmu index                 # queue a run in Action Scheduler
 wp lvmu status

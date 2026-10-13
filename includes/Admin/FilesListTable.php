@@ -69,7 +69,6 @@ class FilesListTable extends \WP_List_Table {
 			'unused'          => [__('Unused', 'labelvier-media-usage'), ['usage_status' => 'unused']],
 			'orphaned'        => [__('Orphaned', 'labelvier-media-usage'), ['orphaned' => 1]],
 			'copies'          => [__('Backups and copies', 'labelvier-media-usage'), ['category' => 'copy']],
-			'suspicious'      => [__('To check', 'labelvier-media-usage'), ['special' => 'suspicious']],
 			'originals'       => [__('Originals', 'labelvier-media-usage'), ['file_role' => 'original']],
 			'webp'            => [__('WebP copies', 'labelvier-media-usage'), ['file_role' => 'webp']],
 		];
@@ -91,7 +90,7 @@ class FilesListTable extends \WP_List_Table {
 		$current = Page::filter_args($this->filters);
 		$views   = [];
 		foreach ($defs as $key => [$label, $args]) {
-			$q     = $this->repo->query(array_merge($args, ['per_page' => 1]) + ['orphaned' => !empty($args['orphaned'])]);
+			$q     = $this->repo->query(array_merge($args, ['per_page' => 1, 'media_only' => true]) + ['orphaned' => !empty($args['orphaned'])]);
 			if (in_array($key, ['suspicious', 'copies'], true) && !(int) $q['total'] && $current != $args) {
 				continue; // Only show this view when there is something to check.
 			}

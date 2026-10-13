@@ -182,8 +182,8 @@ msgid "About all files"
 msgstr "Over alle bestanden"
 
 #: includes/Admin/Page.php:67
-msgid "Every file found in wp-content/uploads, linked to a Media Library item where possible. Sizes are read from disk, so they include every generated thumbnail and any other file in the folder."
-msgstr "Elk bestand in wp-content/uploads, waar mogelijk gekoppeld aan een item in de Mediabibliotheek. De groottes komen van de schijf. Alle gegenereerde thumbnails en andere bestanden in de map tellen dus mee."
+msgid "Every image, video, audio file and document in wp-content/uploads, linked to a Media Library item where possible. Sizes are read from disk, so they include every generated thumbnail."
+msgstr "Elke afbeelding, video, audiobestand en elk document in wp-content/uploads, waar mogelijk gekoppeld aan een item in de Mediabibliotheek. De groottes komen van de schijf, dus alle gegenereerde thumbnails tellen mee."
 
 #: includes/Admin/Page.php:68
 msgid "About unused files"
@@ -198,8 +198,8 @@ msgid "About orphaned files"
 msgstr "Over losse bestanden"
 
 #: includes/Admin/Page.php:69
-msgid "Files on disk that are not part of any Media Library item, such as leftover sizes of deleted items, zips, sql dumps, logs and plugin folders. They can still be in use, for example hard-coded in content."
-msgstr "Bestanden op de schijf die bij geen enkel item in de Mediabibliotheek horen, zoals restanten van verwijderde items, zips, sql-dumps, logbestanden en pluginmappen. Ze kunnen toch in gebruik zijn, bijvoorbeeld als vaste link in content."
+msgid "Media files on disk that are not part of any Media Library item, such as leftover sizes of deleted items. They can still be in use, for example hard-coded in content."
+msgstr "Mediabestanden op de schijf die bij geen enkel item in de Mediabibliotheek horen, zoals restanten van verwijderde items. Ze kunnen toch in gebruik zijn, bijvoorbeeld als vaste link in content."
 
 #: includes/Admin/Page.php:70
 msgid "About orphaned and unused files"
