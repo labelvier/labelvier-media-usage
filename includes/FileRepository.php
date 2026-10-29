@@ -12,8 +12,9 @@ class FileRepository {
 	public const TYPES  = ['image', 'video', 'audio', 'document', 'archive', 'database', 'log', 'code', 'other'];
 	public const USAGES = ['used', 'unused', 'unknown'];
 
-	/** Mutually exclusive categories (protected, then copy, win over the role), in display order. */
-	public const CATEGORIES = ['media', 'original', 'subsize', 'webp', 'orphan', 'copy', 'protected'];
+	/** File types shown in wp-admin. Other files in uploads are only listed through WP-CLI. */
+	public const MEDIA_TYPES = ['image', 'video', 'audio', 'document'];
+
 
 	private const TYPE_MAP = [
 		'image'    => ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg', 'bmp', 'tif', 'tiff', 'ico', 'heic'],
@@ -265,33 +266,26 @@ class FileRepository {
 		return "(file_flag = 'suspicious' OR (file_flag = 'copy' AND extension IN ({$ext})))";
 	}
 
-	/** SQL condition for one category: protected wins, then copy, then the role. */
-	public static function category_sql(string $category): string {
-		if ($category === 'protected') {
-			return "file_flag = 'protected'";
-		}
-		if ($category === 'copy') {
-			return "file_flag = 'copy'";
-		}
-		$role = ['media' => 'main', 'original' => 'original', 'subsize' => 'subsize', 'webp' => 'webp', 'orphan' => 'orphan'][$category] ?? 'orphan';
-		return "(file_role = '{$role}' AND file_flag NOT IN ('protected','copy'))";
+	/** SQL condition for the media file types shown in wp-admin. */
+	private static function media_sql(): string {
+		return "file_type IN ('" . implode("','", self::MEDIA_TYPES) . "')";
 	}
 
 	/**
-	 * Count and size per category, split by usage status. Categories add up to the total.
+	 * Count and size per visible category, split by usage status. Categories add up to the total.
 	 *
 	 * @return array<string, array{total: array{count: int, size: int}, used: array{count: int, size: int}, unused: array{count: int, size: int}}>
 	 */
-	public function category_summary(): array {
+	public function category_summary(bool $media_only = false): array {
 		global $wpdb;
 		$table = Schema::files_table();
 		$empty = ['count' => 0, 'size' => 0];
 		$out   = [];
-		foreach (self::CATEGORIES as $c) {
-			$out[$c] = ['total' => $empty, 'used' => $empty, 'unused' => $empty];
+		foreach (Category::visible() as $category) {
+			$out[$category->value] = ['total' => $empty, 'used' => $empty, 'unused' => $empty];
 		}
-		$case = "CASE WHEN file_flag = 'protected' THEN 'protected' WHEN file_flag = 'copy' THEN 'copy' WHEN file_role = 'main' THEN 'media' ELSE file_role END";
-		foreach ($wpdb->get_results("SELECT {$case} AS cat, usage_status AS u, COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table} GROUP BY cat, u") as $row) {
+		$case = Category::case_sql();
+		foreach ($wpdb->get_results("SELECT {$case} AS cat, usage_status AS u, COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table}" . ($media_only ? ' WHERE ' . self::media_sql() : '') . ' GROUP BY cat, u') as $row) {
 			if (!isset($out[$row->cat])) {
 				continue;
 			}
@@ -305,10 +299,11 @@ class FileRepository {
 	}
 
 	/** Unused files that can be cleaned up (protected excluded). */
-	public function cleanup_potential(): array {
+	public function cleanup_potential(bool $media_only = false): array {
 		global $wpdb;
 		$table = Schema::files_table();
-		$row   = $wpdb->get_row("SELECT COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table} WHERE usage_status = 'unused' AND file_flag <> 'protected'");
+		$media = $media_only ? ' AND ' . self::media_sql() : '';
+		$row   = $wpdb->get_row("SELECT COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table} WHERE usage_status = 'unused' AND file_flag <> 'protected'{$media}");
 		return ['count' => (int) $row->c, 'size' => (int) $row->s];
 	}
 
@@ -343,14 +338,21 @@ class FileRepository {
 			$where[]  = 'path LIKE %s';
 			$params[] = '%' . $wpdb->esc_like($args['search']) . '%';
 		}
-		if (!empty($args['category']) && in_array($args['category'], self::CATEGORIES, true)) {
-			$where[] = self::category_sql($args['category']);
+		$category = Category::tryFrom((string) ($args['category'] ?? ''));
+		if ($category !== null) {
+			$where[] = $category->sql();
 		}
 		if (!empty($args['special']) && $args['special'] === 'suspicious') {
 			$where[] = self::suspicious_sql();
 		} elseif (!empty($args['special']) && in_array($args['special'], ['protected', 'copy'], true)) {
 			$where[]  = 'file_flag = %s';
 			$params[] = $args['special'];
+		}
+		if (($args['special'] ?? '') !== 'protected') {
+			$where[] = "file_flag <> 'protected'"; // Only media is listed; protected files are never deleted anyway.
+		}
+		if (!empty($args['media_only'])) {
+			$where[] = self::media_sql();
 		}
 		if (!empty($args['min_size'])) {
 			$where[]  = 'size >= %d';
@@ -370,19 +372,21 @@ class FileRepository {
 	 *   by_usage: array<string, array{count: int, size: int}>
 	 * }
 	 */
-	public function summary(): array {
+	public function summary(bool $media_only = false): array {
 		global $wpdb;
 		$table = Schema::files_table();
+		$media = $media_only ? ' AND ' . self::media_sql() : '';
 
-		$group = static function (string $column) use ($wpdb, $table): array {
+		// Protected files (server configuration, dotfiles, plugin data) are not media and stay out of the overview.
+		$group = static function (string $column) use ($wpdb, $table, $media): array {
 			$out = [];
-			foreach ($wpdb->get_results("SELECT {$column} AS k, COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table} GROUP BY {$column}") as $row) {
+			foreach ($wpdb->get_results("SELECT {$column} AS k, COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table} WHERE file_flag <> 'protected'{$media} GROUP BY {$column}") as $row) {
 				$out[$row->k] = ['count' => (int) $row->c, 'size' => (int) $row->s];
 			}
 			return $out;
 		};
 
-		$total    = $wpdb->get_row("SELECT COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table}");
+		$total    = $wpdb->get_row("SELECT COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table} WHERE file_flag <> 'protected'{$media}");
 
 		return [
 			'total'    => ['count' => (int) $total->c, 'size' => (int) $total->s],

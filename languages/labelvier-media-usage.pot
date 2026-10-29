@@ -226,7 +226,7 @@ msgid "About all files"
 msgstr ""
 
 #: includes/Admin/Page.php:67
-msgid "Every file found in wp-content/uploads, linked to a Media Library item where possible. Sizes are read from disk, so they include every generated thumbnail and any other file in the folder."
+msgid "Every image, video, audio file and document in wp-content/uploads, linked to a Media Library item where possible. Sizes are read from disk, so they include every generated thumbnail."
 msgstr ""
 
 #: includes/Admin/Page.php:68
@@ -242,7 +242,7 @@ msgid "About orphaned files"
 msgstr ""
 
 #: includes/Admin/Page.php:69
-msgid "Files on disk that are not part of any Media Library item, such as leftover sizes of deleted items, zips, sql dumps, logs and plugin folders. They can still be in use, for example hard-coded in content."
+msgid "Media files on disk that are not part of any Media Library item, such as leftover sizes of deleted items. They can still be in use, for example hard-coded in content."
 msgstr ""
 
 #: includes/Admin/Page.php:70
@@ -994,4 +994,23 @@ msgstr ""
 
 #: includes/Usage/UsageResolver.php:263
 msgid "Resolving usage failed: "
+msgstr ""
+
+msgid "Media"
+msgstr ""
+
+msgid "Database"
+msgstr ""
+
+msgid "Plugins and system"
+msgstr ""
+
+msgid "Size of the site: %s"
+msgstr ""
+
+msgid "The size of the site is being measured."
+msgstr ""
+
+#. translators: %s: relative time, like "2 hours"
+msgid "Measured %s ago."
 msgstr ""

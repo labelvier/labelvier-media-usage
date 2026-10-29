@@ -107,13 +107,12 @@ class Cli {
 		$fmt  = static fn(array $d): string => $d['count'] . ' / ' . size_format($d['size'], 2);
 		$rows = [['group' => 'total', 'key' => 'all', 'total' => $fmt($summary['total']), 'used' => '', 'unused' => '']];
 		foreach ($categories as $category => $data) {
-			$is_protected = $category === 'protected';
-			$rows[]       = [
+			$rows[] = [
 				'group'  => 'category',
 				'key'    => $category,
 				'total'  => $fmt($data['total']),
-				'used'   => $is_protected ? 'n/a' : $fmt($data['used']),
-				'unused' => $is_protected ? 'n/a' : $fmt($data['unused']),
+				'used'   => $fmt($data['used']),
+				'unused' => $fmt($data['unused']),
 			];
 		}
 		$rows[] = ['group' => 'reclaimable', 'key' => 'unused, excl. protected', 'total' => '', 'used' => '', 'unused' => $fmt($potential)];
@@ -190,5 +189,43 @@ class Cli {
 		if ($format === 'table') {
 			\WP_CLI::log(sprintf('%d matching files, %s in total.', $result['total'], size_format($result['total_size'], 2)));
 		}
+	}
+
+	/**
+	 * Show how much disk space the site takes: uploads, database and plugins plus a fixed
+	 * 300 MB allowance for WordPress core and themes. Sizes are in bytes in json format.
+	 * Always measures live and stores the result for the Media Usage page.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--format=<format>]
+	 * : Output format.
+	 * ---
+	 * default: table
+	 * options:
+	 *   - table
+	 *   - json
+	 * ---
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp lvmu size --format=json
+	 *
+	 * @param array $args
+	 * @param array $assoc_args
+	 */
+	public function size($args, $assoc_args): void {
+		$size = SiteSize::measure_and_store();
+
+		if (($assoc_args['format'] ?? 'table') === 'json') {
+			\WP_CLI::line(wp_json_encode($size));
+			return;
+		}
+
+		$rows = [];
+		foreach (['uploads', 'database', 'plugins', 'base', 'total'] as $key) {
+			$rows[] = ['part' => $key, 'size' => size_format($size[$key], 2)];
+		}
+		\WP_CLI\Utils\format_items('table', $rows, ['part', 'size']);
 	}
 }
