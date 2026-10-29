@@ -107,13 +107,12 @@ class Cli {
 		$fmt  = static fn(array $d): string => $d['count'] . ' / ' . size_format($d['size'], 2);
 		$rows = [['group' => 'total', 'key' => 'all', 'total' => $fmt($summary['total']), 'used' => '', 'unused' => '']];
 		foreach ($categories as $category => $data) {
-			$is_protected = $category === 'protected';
-			$rows[]       = [
+			$rows[] = [
 				'group'  => 'category',
 				'key'    => $category,
 				'total'  => $fmt($data['total']),
-				'used'   => $is_protected ? 'n/a' : $fmt($data['used']),
-				'unused' => $is_protected ? 'n/a' : $fmt($data['unused']),
+				'used'   => $fmt($data['used']),
+				'unused' => $fmt($data['unused']),
 			];
 		}
 		$rows[] = ['group' => 'reclaimable', 'key' => 'unused, excl. protected', 'total' => '', 'used' => '', 'unused' => $fmt($potential)];

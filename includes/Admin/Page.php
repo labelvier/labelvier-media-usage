@@ -2,6 +2,7 @@
 
 namespace LabelvierMediaUsage\Admin;
 
+use LabelvierMediaUsage\Category;
 use LabelvierMediaUsage\DeleteQueue;
 use LabelvierMediaUsage\Deleter;
 use LabelvierMediaUsage\FileRepository;
@@ -80,9 +81,8 @@ class Page {
 		$usage_texts = [
 			'used' => [__('About used files', 'labelvier-media-usage'), __('The "Where used" column shows what references the file. Used files are locked and cannot be deleted unless "Also delete files marked as used" is checked.', 'labelvier-media-usage')],
 		];
-		$cat_map = ['media' => 'main', 'original' => 'originals', 'subsize' => 'subsize', 'webp' => 'webp', 'orphan' => 'orphaned', 'copy' => 'copies'];
 		if (!empty($f['category']) && empty($f['search'])) {
-			$k = $cat_map[$f['category']] ?? '';
+			$k = Category::tryFrom($f['category'])?->view_key() ?? '';
 			$t = $role_texts[$k] ?? $texts[$k] ?? [];
 			if ($t && ($f['usage_status'] ?? '') === 'unused' && $k === 'orphaned') {
 				return $texts['orphaned_unused'];
@@ -272,9 +272,9 @@ class Page {
 		if (!empty($src['orphaned'])) {
 			$f['orphaned'] = true;
 		}
-		$cat = isset($src['category']) ? sanitize_key($src['category']) : '';
-		if (in_array($cat, FileRepository::CATEGORIES, true) && $cat !== 'protected') {
-			$f['category'] = $cat;
+		$cat = Category::from_request(isset($src['category']) ? sanitize_key($src['category']) : '');
+		if ($cat !== null) {
+			$f['category'] = $cat->value;
 		}
 		$sp = isset($src['special']) ? sanitize_key($src['special']) : '';
 		if ($sp === 'copy') {
@@ -727,18 +727,6 @@ class Page {
 		return __('Full size upload kept next to the -scaled file. Only used when linked directly; safe to delete in most cases.', 'labelvier-media-usage');
 	}
 
-	/** Category definitions: key => [label, hint]. */
-	public static function category_defs(): array {
-		return [
-			'media'     => [__('Media items', 'labelvier-media-usage'), __('The file your site shows, one per item in the Media Library', 'labelvier-media-usage')],
-			'original'  => [__('Originals', 'labelvier-media-usage'), __('Original upload next to the -scaled file, not visible in the Media Library', 'labelvier-media-usage')],
-			'subsize'   => [__('Generated sizes', 'labelvier-media-usage'), __('Thumbnails and other sizes', 'labelvier-media-usage')],
-			'webp'      => [__('WebP copies', 'labelvier-media-usage'), __('Copies made by optimizer plugins', 'labelvier-media-usage')],
-			'orphan'    => [__('Loose files', 'labelvier-media-usage'), __('Not linked to the Media Library', 'labelvier-media-usage')],
-			'copy'      => [__('Backups and copies', 'labelvier-media-usage'), __('Copies of media and backups of optimization plugins. Check before you delete.', 'labelvier-media-usage')],
-		];
-	}
-
 	private static function stat_text(array $st): string {
 		return number_format_i18n($st['count']) . ' &middot; ' . esc_html(self::format_size_mb($st['size']));
 	}
@@ -835,10 +823,10 @@ class Page {
 		echo '<caption class="screen-reader-text">' . esc_html__('Files in uploads per category', 'labelvier-media-usage') . '</caption>';
 		echo '<thead><tr><th scope="col">' . esc_html__('Category', 'labelvier-media-usage') . '</th><th scope="col" class="lvmu-num">' . esc_html__('Total', 'labelvier-media-usage')
 			. '</th><th scope="col" class="lvmu-num">' . esc_html__('Used', 'labelvier-media-usage') . '</th><th scope="col" class="lvmu-num">' . esc_html__('Unused', 'labelvier-media-usage') . '</th></tr></thead><tbody>';
-		foreach (self::category_defs() as $key => [$label, $hint]) {
-			if (!isset($cats[$key])) {
-				continue; // Protected files are not shown.
-			}
+		foreach (Category::visible() as $category) {
+			$key      = $category->value;
+			$label    = $category->label();
+			$hint     = $category->hint();
 			$c        = $cats[$key];
 			$base     = ['category' => $key];
 			$row_cur  = $is_cur($base);

@@ -15,8 +15,6 @@ class FileRepository {
 	/** File types shown in wp-admin. Other files in uploads are only listed through WP-CLI. */
 	public const MEDIA_TYPES = ['image', 'video', 'audio', 'document'];
 
-	/** Mutually exclusive categories (protected, then copy, win over the role), in display order. */
-	public const CATEGORIES = ['media', 'original', 'subsize', 'webp', 'orphan', 'copy', 'protected'];
 
 	private const TYPE_MAP = [
 		'image'    => ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'svg', 'bmp', 'tif', 'tiff', 'ico', 'heic'],
@@ -273,20 +271,8 @@ class FileRepository {
 		return "file_type IN ('" . implode("','", self::MEDIA_TYPES) . "')";
 	}
 
-	/** SQL condition for one category: protected wins, then copy, then the role. */
-	public static function category_sql(string $category): string {
-		if ($category === 'protected') {
-			return "file_flag = 'protected'";
-		}
-		if ($category === 'copy') {
-			return "file_flag = 'copy'";
-		}
-		$role = ['media' => 'main', 'original' => 'original', 'subsize' => 'subsize', 'webp' => 'webp', 'orphan' => 'orphan'][$category] ?? 'orphan';
-		return "(file_role = '{$role}' AND file_flag NOT IN ('protected','copy'))";
-	}
-
 	/**
-	 * Count and size per category, split by usage status. Categories add up to the total.
+	 * Count and size per visible category, split by usage status. Categories add up to the total.
 	 *
 	 * @return array<string, array{total: array{count: int, size: int}, used: array{count: int, size: int}, unused: array{count: int, size: int}}>
 	 */
@@ -295,13 +281,10 @@ class FileRepository {
 		$table = Schema::files_table();
 		$empty = ['count' => 0, 'size' => 0];
 		$out   = [];
-		foreach (self::CATEGORIES as $c) {
-			if ($c === 'protected') {
-				continue; // Not media, not shown in the overview.
-			}
-			$out[$c] = ['total' => $empty, 'used' => $empty, 'unused' => $empty];
+		foreach (Category::visible() as $category) {
+			$out[$category->value] = ['total' => $empty, 'used' => $empty, 'unused' => $empty];
 		}
-		$case = "CASE WHEN file_flag = 'protected' THEN 'protected' WHEN file_flag = 'copy' THEN 'copy' WHEN file_role = 'main' THEN 'media' ELSE file_role END";
+		$case = Category::case_sql();
 		foreach ($wpdb->get_results("SELECT {$case} AS cat, usage_status AS u, COUNT(*) AS c, COALESCE(SUM(size), 0) AS s FROM {$table}" . ($media_only ? ' WHERE ' . self::media_sql() : '') . ' GROUP BY cat, u') as $row) {
 			if (!isset($out[$row->cat])) {
 				continue;
@@ -355,8 +338,9 @@ class FileRepository {
 			$where[]  = 'path LIKE %s';
 			$params[] = '%' . $wpdb->esc_like($args['search']) . '%';
 		}
-		if (!empty($args['category']) && in_array($args['category'], self::CATEGORIES, true)) {
-			$where[] = self::category_sql($args['category']);
+		$category = Category::tryFrom((string) ($args['category'] ?? ''));
+		if ($category !== null) {
+			$where[] = $category->sql();
 		}
 		if (!empty($args['special']) && $args['special'] === 'suspicious') {
 			$where[] = self::suspicious_sql();
