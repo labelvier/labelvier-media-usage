@@ -763,8 +763,7 @@ class Page {
 		}
 
 		$parts = [
-			// The whole uploads folder, so also files the overview below does not show.
-			__('Uploads', 'labelvier-media-usage')  => $size['uploads'],
+			__('Media', 'labelvier-media-usage')    => $size['uploads'],
 			__('Database', 'labelvier-media-usage') => $size['database'],
 			// The fixed allowance for WordPress and the theme counts as system.
 			__('Plugins and system', 'labelvier-media-usage') => (int) $size['plugins'] + (int) $size['base'],
