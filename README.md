@@ -21,7 +21,7 @@ overview per category with the size you can reclaim, and a safe way to bulk dele
 - **Media only in wp-admin**: images, video, audio and documents. Other files in uploads
   (archives, database dumps, logs, code) and protected files are not shown to the client;
   WP-CLI still lists all file types.
-- **Size of the site**: media, database and "plugins and system" (plugins plus 300 MB for
+- **Size of the site**: uploads, database and "plugins and system" (plugins plus 300 MB for
   WordPress and the theme), measured in the background. Only sizes are shown, not the database or plugin files.
 - **Overview by category**: media items, originals, generated sizes, WebP copies, loose
   files, backups and copies. Each with a count, size and how much is unused.

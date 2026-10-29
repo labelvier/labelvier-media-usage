@@ -91,7 +91,7 @@ class FilesListTable extends \WP_List_Table {
 		$views   = [];
 		foreach ($defs as $key => [$label, $args]) {
 			$q     = $this->repo->query(array_merge($args, ['per_page' => 1, 'media_only' => true]) + ['orphaned' => !empty($args['orphaned'])]);
-			if (in_array($key, ['suspicious', 'copies'], true) && !(int) $q['total'] && $current != $args) {
+			if ($key === 'copies' && !(int) $q['total'] && $current != $args) {
 				continue; // Only show this view when there is something to check.
 			}
 			$class = ($current == $args && empty($_GET['s'])) ? ' class="current" aria-current="page"' : '';

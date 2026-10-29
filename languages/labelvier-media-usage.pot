@@ -996,7 +996,7 @@ msgstr ""
 msgid "Resolving usage failed: "
 msgstr ""
 
-msgid "Media"
+msgid "Uploads"
 msgstr ""
 
 msgid "Database"

@@ -4,16 +4,14 @@ All notable changes to this plugin are documented in this file. The format is ba
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the plugin uses
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
-
-Release this as 0.4.0: it adds features and changes what wp-admin and WP-CLI show.
+## [0.4.0] - 2026-10-29
 
 ### Added
 - `wp lvmu size` command: size of the uploads folder, the database and the plugins, plus
   a fixed 300 MB allowance for core and themes (`lvmu_site_size_base_allowance` filter).
   With `--format=json` the sizes are in bytes, for the Label Vier dashboard. It always
   measures live and stores the result.
-- Size of the site on the Media Usage page: media, database and "plugins and system"
+- Size of the site on the Media Usage page: uploads, database and "plugins and system"
   (the plugins plus 300 MB for WordPress and the theme), sizes only. Measured in the background through Action Scheduler
   after every index run and when the last measurement is older than a day, so the page
   never waits for it.

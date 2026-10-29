@@ -102,6 +102,10 @@ class SiteSize {
 	/**
 	 * Size of all tables with the WordPress prefix (data and indexes), in bytes.
 	 *
+	 * information_schema holds estimates for InnoDB that can lag behind a little, which is
+	 * fine for an indication of the site size. Multisite is not supported (the plugin
+	 * disables itself there), so the prefix only matches the tables of this site.
+	 *
 	 * @return int
 	 */
 	public static function database_size(): int {
@@ -118,7 +122,7 @@ class SiteSize {
 
 	/**
 	 * Total size of all files below a directory, in bytes. Symlinks are not followed.
- * Never throws: unreadable or vanished entries are skipped.
+	 * Never throws: unreadable or vanished entries are skipped.
 	 *
 	 * @param string $dir
 	 * @return int
