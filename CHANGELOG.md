@@ -4,6 +4,32 @@ All notable changes to this plugin are documented in this file. The format is ba
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the plugin uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-10-29
+
+### Added
+- `wp lvmu size` command: size of the uploads folder, the database and the plugins, plus
+  a fixed 300 MB allowance for core and themes (`lvmu_site_size_base_allowance` filter).
+  With `--format=json` the sizes are in bytes, for the Label Vier dashboard. It always
+  measures live and stores the result.
+- Size of the site on the Media Usage page: media, database and "plugins and system"
+  (the plugins plus 300 MB for WordPress and the theme), sizes only. Measured in the background through Action Scheduler
+  after every index run and when the last measurement is older than a day, so the page
+  never waits for it.
+
+### Changed
+- wp-admin shows media only: images, video, audio and documents. Archives, database dumps,
+  logs, code and other files in uploads are no longer shown in the overview, the type
+  filter, the size per type, the file list or bulk deletes. The "PHP or script files"
+  warning and the "To check" view are gone from wp-admin.
+- Protected files (server configuration such as `.htaccess`, dotfiles and plugin data) are
+  no longer shown anywhere. They are still never deleted.
+- WP-CLI: `wp lvmu list` and `wp lvmu summary` still show all file types, but no longer
+  include protected files (the `protected` category is gone from `summary --format=json`).
+
+### Fixed
+- Measuring the site size no longer fails on unreadable folders or files that disappear
+  during the measurement.
+
 ## [0.3.0] - 2026-10-08
 
 ### Added

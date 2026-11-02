@@ -31,6 +31,7 @@ class Plugin {
 			if (class_exists(DeleteQueue::class)) {
 				DeleteQueue::register();
 			}
+			SiteSize::register();
 
 			if (is_admin() && class_exists(Page::class)) {
 				Page::register();

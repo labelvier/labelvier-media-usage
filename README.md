@@ -18,8 +18,13 @@ overview per category with the size you can reclaim, and a safe way to bulk dele
 
 ## Features
 
+- **Media only in wp-admin**: images, video, audio and documents. Other files in uploads
+  (archives, database dumps, logs, code) and protected files are not shown to the client;
+  WP-CLI still lists all file types.
+- **Size of the site**: media, database and "plugins and system" (plugins plus 300 MB for
+  WordPress and the theme), measured in the background. Only sizes are shown, not the database or plugin files.
 - **Overview by category**: media items, originals, generated sizes, WebP copies, loose
-  files, backups and copies, protected files. Each with a count, size and how much is unused.
+  files, backups and copies. Each with a count, size and how much is unused.
 - **Usage detection** across the whole database (every table with the WordPress prefix):
   post content and blocks, galleries, featured images, ACF image/file/gallery fields,
   page builder data, widgets and options, site icon and logo, plus references from theme
@@ -174,14 +179,21 @@ Filters: `lvmu_copy_folders` (array of folder names, fnmatch globs allowed) and
 ## WP-CLI
 
 ```bash
+# WP-CLI shows every file type in uploads (wp-admin shows media only); protected files are never listed.
 wp lvmu index --sync          # run a full index inline
 wp lvmu index                 # queue a run in Action Scheduler
 wp lvmu status
 wp lvmu summary
 wp lvmu list --orphaned --usage_status=unused --limit=50
+wp lvmu size                  # uploads + database + plugins + 300 MB for core and themes
 ```
 
 `wp lvmu summary --format=json` prints the full summary including the reclaimable size.
+
+`wp lvmu size --format=json` prints the size of the site in bytes:
+`uploads` (the whole uploads folder), `database` (all tables with the WordPress prefix),
+`plugins`, `base` (a fixed 300 MB for core and themes) and `total`. The Label Vier
+dashboard uses this to show storage usage per site.
 
 ## Hooks
 
@@ -191,6 +203,7 @@ wp lvmu list --orphaned --usage_status=unused --limit=50
 | `lvmu_protected_patterns` | filter | Extend the protected rules (keys `names`, `extensions` and `folders`). |
 | `lvmu_copy_folders` | filter | Folder names (fnmatch globs allowed) that are treated as optimizer backups. Default `['ShortpixelBackups']`. |
 | `lvmu_ref_scan_skip_tables` | filter | Regex list of tables the usage scan skips. |
+| `lvmu_site_size_base_allowance` | filter | Bytes added to the measured size for core and themes in `wp lvmu size` (default 300 MB). |
 | `lvmu_ref_scan_error_tolerant_tables` | filter | Regex list of tables for which unreadable rows do not fail the scan. |
 | `lvmu_deleted_files` | action | Fires after a delete run with the result (deleted, freed, skipped). |
 
